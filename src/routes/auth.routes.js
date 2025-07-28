@@ -18,7 +18,7 @@ router.get('/google/callback',
     res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Lax', // Sử dụng 'Lax' cho redirect
+        sameSite: 'None', // Sử dụng 'Lax' cho redirect
         maxAge: 3600000,
         path: '/'
     });
@@ -39,7 +39,7 @@ router.get('/facebook/callback',
     res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Lax',
+        sameSite: 'None',
         maxAge: 3600000,
         path: '/'
     });

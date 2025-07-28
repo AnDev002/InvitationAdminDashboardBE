@@ -112,8 +112,8 @@ const register = async (req, res, next) => {
 const logout = async (req, res, next) => {
   res.clearCookie('token', { 
     httpOnly: true, 
-    secure: process.env.NODE_ENV === 'production', 
-    sameSite: 'None', // Sửa SameSite thành Lax để tương thích tốt hơn
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
     path: '/'
   })
   .status(200) 
@@ -131,15 +131,17 @@ const login = async (req, res, next) => {
       return res.status(401).json({ message: 'Tên đăng nhập hoặc mật khẩu không chính xác.' });
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' }); // Tăng thời gian hết hạn token
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
     user.password = undefined;
 
+    // --- SỬA LỖI Ở ĐÂY ---
+    // Cấu hình cookie đúng chuẩn cho cả môi trường dev và production
     res.cookie('token', token, {
-        httpOnly: true, 
-        secure: process.env.NODE_ENV === 'production', 
-        sameSite: 'None', // Sửa SameSite thành Lax
-        maxAge: 24 * 60 * 60 * 1000, // 1 ngày
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
+        maxAge: 24 * 60 * 60 * 1000 * 365, // 1 năm
         path: '/'
     })
     .json({
@@ -156,5 +158,6 @@ const login = async (req, res, next) => {
     next(error);
   }
 };
+
 
 module.exports = { register, login, logout, forgotPassword, resetPassword };

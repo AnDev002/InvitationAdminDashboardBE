@@ -7,8 +7,7 @@ const adminController = require('../controllers/admin.controller');
 const productController = require('../controllers/product.controller');
 const templateController = require('../controllers/invitationTemplate.controller');
 const userController = require('../controllers/user.controller');
-// Import middleware upload nếu cần
-// const { upload } = require('../middleware/upload.middleware');
+const { upload, resizeImage, uploadImageToR2 } = require('../middleware/upload.middleware');
 
 // Tất cả các route trong file này đều yêu cầu đăng nhập VÀ phải là admin
 router.use(protect);
@@ -19,13 +18,16 @@ router.get('/dashboard', adminController.getDashboardData);
 
 // === Product Management ===
 router.get('/products', productController.getProducts);
-router.post('/products', /* upload.single('imgSrc'), */ productController.createProduct);
-router.put('/products/:id', /* upload.single('imgSrc'), */ productController.updateProduct);
+router.post('/products', productController.createProduct);
+router.put('/products/:id', productController.updateProduct);
 router.delete('/products/:id', productController.deleteProduct);
 
-// === Template Management ===
+// === Template Management (Đầy đủ các phương thức CRUD) ===
 router.get('/templates', templateController.getInvitationTemplates);
-// Thêm các route POST, PUT, DELETE cho Template nếu cần
+router.post('/templates', upload.single('image'), resizeImage, uploadImageToR2, templateController.createTemplate);
+router.get('/templates/:id', templateController.getTemplateById);
+router.put('/templates/:id', upload.single('image'), resizeImage, uploadImageToR2, templateController.updateTemplate);
+router.delete('/templates/:id', templateController.deleteTemplate);
 
 // === User Management ===
 router.get('/users', userController.getUsers);

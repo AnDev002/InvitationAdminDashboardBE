@@ -3,14 +3,11 @@ const User = require('../models/user.model');
 
 const protect = async (req, res, next) => {
   let token;
-
   // 1. Đọc token từ httpOnly cookie
   if (req.cookies && req.cookies.token) {
-    token = req.cookies.token;
+      token = req.cookies.token;
   }
-  
   // 2. Nếu không có token trong cookie, trả về lỗi
-  // Dòng này chính là nơi sinh ra lỗi của bạn
   if (!token) {
     return res.status(401).json({ success: false, message: 'Not authorized, no token' });
   }
