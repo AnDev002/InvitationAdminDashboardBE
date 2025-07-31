@@ -1,4 +1,5 @@
 const DesignAsset = require('../models/designAsset.model');
+const { deleteFileFromR2 } = require('./r2.service'); 
 
 /**
  * Lấy tất cả các tài nguyên thiết kế dựa trên loại của chúng.
@@ -12,6 +13,34 @@ const getAssetsByType = async (assetType) => {
         return await DesignAsset.find().sort({ assetType: 1 });
     }
     return await DesignAsset.find({ assetType: assetType });
+};
+
+/**
+ * [HÀM MỚI]
+ * Tạo một tài sản thiết kế mới.
+ * @param {object} assetData - Dữ liệu tài sản từ controller.
+ * @returns {Promise<Document>}
+ */
+const createAsset = async (assetData) => {
+    return await DesignAsset.create(assetData);
+};
+
+/**
+ * [HÀM MỚI]
+ * Xóa một tài sản thiết kế bằng ID.
+ * @param {string} assetId - ID của tài sản cần xóa.
+ */
+const deleteAssetById = async (assetId) => {
+    const asset = await DesignAsset.findById(assetId);
+    if (asset && asset.imgSrc) {
+        // Trích xuất file key từ URL và xóa file trên R2
+        const fileKey = asset.imgSrc.split('/').pop();
+        if (fileKey) {
+            await deleteFileFromR2(fileKey);
+        }
+    }
+    // Xóa tài sản khỏi cơ sở dữ liệu
+    await DesignAsset.findByIdAndDelete(assetId);
 };
 
 // Bạn cũng có thể thêm hàm seed dữ liệu ở đây, tương tự như seedTemplates
@@ -40,5 +69,7 @@ const seedAssets = async () => {
 };
 module.exports = {
     getAssetsByType,
+    createAsset, 
+    deleteAssetById, 
     seedAssets, // Export để có thể gọi từ một route admin nào đó
 };

@@ -1,11 +1,25 @@
+// AdminTrainData/AdminBE/routes/designAsset.routes.js
+
 const express = require('express');
 const router = express.Router();
-const { getDesignAssets, seedInitialAssets } = require('../controllers/designAsset.controller');
+const { getDesignAssets, createDesignAsset, deleteDesignAsset, seedInitialAssets } = require('../controllers/designAsset.controller');
+const { protect, authorize } = require('../middleware/auth.middleware');
+const { upload, resizeImage, uploadImageToR2 } = require('../middleware/upload.middleware');
 
-// Route chính để lấy tài nguyên. vd: GET /api/design-assets?type=icon
 router.get('/', getDesignAssets);
 
-// Route để seed dữ liệu, bạn nên bảo vệ route này sau này
+router.post(
+    '/', 
+    protect, 
+    authorize('admin'), 
+    upload.single('image'), 
+    resizeImage, 
+    uploadImageToR2, 
+    createDesignAsset
+);
+
+router.delete('/:id', protect, authorize('admin'), deleteDesignAsset);
+
 router.post('/seed', seedInitialAssets);
 
 module.exports = router;

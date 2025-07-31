@@ -7,8 +7,10 @@ const errorHandler = require('./src/middleware/errorHandler');
 const routes = require('./src/routes');
 const passport = require('passport');
 const session = require('express-session');
-const authRoutes = require('./src/routes/auth.routes');
-const adminRoutes = require('./src/routes/admin.routes');
+const authAdminRoutes = require('./src/routes/auth.routes');
+const dataAdminRoutes = require('./src/routes/admin.routes');
+const designAssetRoutes = require('./src/routes/designAsset.routes'); 
+const userRoutes = require('./src/routes/user.routes');
 require('./src/config/passport');
 dotenv.config();
 const app = express();
@@ -28,9 +30,12 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(express.static('public'));
-app.use('/api/v1', routes);
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/admin', adminRoutes);
+const adminApiRouter = express.Router();
+adminApiRouter.use('/auth', authAdminRoutes);
+adminApiRouter.use('/', dataAdminRoutes);
+app.use('/api/v1/admin', adminApiRouter);
+app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/design-assets', designAssetRoutes);
 app.use(errorHandler);
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {

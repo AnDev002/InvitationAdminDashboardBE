@@ -18,6 +18,44 @@ const getDesignAssets = async (req, res, next) => {
     }
 };
 
+/**
+ * [CONTROLLER MỚI]
+ * Tạo một tài sản thiết kế mới.
+ */
+const createDesignAsset = async (req, res, next) => {
+    try {
+        const { name, assetType, category } = req.body;
+        if (!req.file || !req.file.r2Url) {
+            return res.status(400).json({ message: 'Vui lòng tải lên một file ảnh.' });
+        }
+        
+        const assetData = {
+            name,
+            assetType,
+            category: category || 'General',
+            imgSrc: req.file.r2Url
+        };
+        
+        const newAsset = await designAssetService.createAsset(assetData);
+        res.status(201).json({ status: 'success', data: newAsset });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * [CONTROLLER MỚI]
+ * Xóa một tài sản thiết kế.
+ */
+const deleteDesignAsset = async (req, res, next) => {
+    try {
+        await designAssetService.deleteAssetById(req.params.id);
+        res.status(204).send(); // 204 No Content
+    } catch (error) {
+        next(error);
+    }
+};
+
 // Controller để seed dữ liệu (chỉ dùng cho mục đích phát triển)
 const seedInitialAssets = async (req, res, next) => {
     try {
@@ -29,5 +67,7 @@ const seedInitialAssets = async (req, res, next) => {
 
 module.exports = {
     getDesignAssets,
+    createDesignAsset,
+    deleteDesignAsset, 
     seedInitialAssets,
 };

@@ -113,11 +113,62 @@ const seedTemplates = async (req, res, next) => {
     // ... (giữ nguyên hàm seed)
 };
 
+const getTemplateCategories = async (req, res, next) => {
+    try {
+        const categories = await invitationTemplateService.getUniqueCategories();
+        res.status(200).json({
+            status: 'success',
+            data: categories,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const bulkCreateTemplates = async (req, res, next) => {
+    try {
+        const templatesToCreate = req.body.templates; // Nhận mảng templates từ frontend
+        if (!templatesToCreate || !Array.isArray(templatesToCreate)) {
+            return res.status(400).json({ message: 'Dữ liệu gửi lên không hợp lệ.' });
+        }
+
+        // Gán dữ liệu mặc định cho các mẫu thiệp
+        const defaultTemplateData = { width: 800, height: 600, pages: [] };
+        const defaultImgSrc = 'https://placehold.co/400x300/e0e0e0/777?text=Chưa+thiết+kế';
+
+        const processedTemplates = templatesToCreate.map(t => ({
+            ...t,
+            imgSrc: t.imgSrc || defaultImgSrc,
+            templateData: t.templateData || defaultTemplateData,
+        }));
+
+        const result = await invitationTemplateService.bulkCreateTemplates(processedTemplates);
+
+        res.status(201).json({
+            status: 'success',
+            message: `Đã thêm thành công ${result.length} mẫu thiệp.`,
+            data: result,
+        });
+    } catch (error) {
+        // Xử lý lỗi trùng lặp key (ví dụ: title)
+        if (error.code === 11000) {
+             res.status(409).json({
+                message: `Thêm mới thất bại. Có ${error.writeErrors.length} lỗi, có thể do trùng tiêu đề mẫu.`,
+                errors: error.writeErrors.map(e => `Mẫu '${e.op.title}' bị lỗi: ${e.errmsg}`),
+            });
+        } else {
+             next(error);
+        }
+    }
+};
+
 module.exports = {
     getInvitationTemplates,
     getTemplateById,
     createTemplate,
     updateTemplate,
     deleteTemplate,
-    seedTemplates
+    seedTemplates,
+    getTemplateCategories,
+    bulkCreateTemplates,
 };

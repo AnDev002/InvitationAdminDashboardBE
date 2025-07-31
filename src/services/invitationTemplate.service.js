@@ -27,11 +27,22 @@ const deleteTemplateById = async (id) => {
   await InvitationTemplate.findByIdAndDelete(id);
 };
 
+const getUniqueCategories = async () => {
+  // Sử dụng `distinct` để lấy các giá trị không trùng lặp của trường 'category'
+  return await InvitationTemplate.distinct('category');
+};
 
+const bulkCreateTemplates = async (templates) => {
+  // `ordered: false` cho phép tiếp tục insert các bản ghi hợp lệ khác dù có lỗi (vd: trùng title)
+  // `rawResult: true` để có kết quả chi tiết
+  return await InvitationTemplate.insertMany(templates, { ordered: false });
+};
 module.exports = {
   queryInvitationTemplates,
   getTemplateById,
   createTemplate,
   updateTemplateById,
   deleteTemplateById,
+  getUniqueCategories,
+  bulkCreateTemplates,
 };
