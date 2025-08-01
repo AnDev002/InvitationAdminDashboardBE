@@ -23,24 +23,6 @@ const findUserByEmail = async (email) => {
     return await User.findOne({ email }).select('+password');
 };
 
-const updateUser = async (userId, updateData) => {
-  try {
-    const user = await User.findByIdAndUpdate(userId, updateData, {
-      new: true,          // Trả về document mới sau khi cập nhật
-      runValidators: true,  // Chạy các quy tắc validate của schema
-    }).select('-password'); // Luôn loại bỏ mật khẩu
-
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    return user;
-  } catch (error) {
-    throw error; // Ném lỗi để controller có thể bắt và xử lý
-  }
-};
-
-
 const changeUserPassword = async (userId, currentPassword, newPassword) => {
     // Lấy user và cả password hash
     const user = await User.findById(userId).select('+password');
@@ -68,12 +50,44 @@ const findUserByUsernameOrEmail = async (loginIdentifier) => {
     return await User.findOne(query).select('+password');
 };
 
+/**
+ * ++ MỚI: Cập nhật người dùng bởi ID ++
+ * @param {string} userId - ID của người dùng cần cập nhật
+ * @param {object} updateBody - Các trường cần cập nhật
+ * @returns {Promise<User>}
+ */
+const updateUser = async (userId, updateBody) => {
+    const user = await userModel.findById(userId);
+    if (!user) {
+        throw new ApiError(httpStatus.NOT_FOUND, 'Không tìm thấy người dùng');
+    }
+    
+    // Cập nhật các trường được phép
+    Object.assign(user, updateBody);
+
+    await user.save();
+    return user;
+};
+
+/**
+ * ++ MỚI: Xóa người dùng bởi ID ++
+ * @param {string} userId - ID của người dùng cần xóa
+ * @returns {Promise<void>}
+ */
+const deleteUser = async (userId) => {
+    const user = await userModel.findById(userId);
+    if (!user) {
+        throw new ApiError(httpStatus.NOT_FOUND, 'Không tìm thấy người dùng');
+    }
+    await user.deleteOne(); // Sử dụng deleteOne() để xóa document
+};
 module.exports = {
   getAllUsers,
   createUser,
   getUserById,
   findUserByEmail,
-  updateUser,
   changeUserPassword,
-  findUserByUsernameOrEmail
+  findUserByUsernameOrEmail,
+  updateUser, 
+  deleteUser,
 };

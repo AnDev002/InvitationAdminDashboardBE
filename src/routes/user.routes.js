@@ -14,4 +14,10 @@ router.put('/me/change-password', protect, validatePasswordChange, userControlle
 router.put('/me/avatar', protect, upload.single('avatar'), resizeImage, uploadImageToR2, userController.updateAvatar);
 router.get('/:id', protect, authorize('admin'), userController.getUser);
 
+// Cập nhật thông tin người dùng (yêu cầu đăng nhập và là admin)
+router.put('/:id', protect, authorize('admin'), userController.updateUser);
+
+// Xóa người dùng (yêu cầu đăng nhập và là admin)
+router.delete('/:id', protect, authorize('admin'), userController.deleteUser);
+
 module.exports = router;

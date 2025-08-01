@@ -122,6 +122,33 @@ const changePassword = async (req, res, next) => {
     }
 };
 
+const updateUser = async (req, res, next) => {
+    try {
+        const user = await userService.updateUser(req.params.id, req.body);
+        res.status(httpStatus.OK).send({
+            status: 'success',
+            message: 'Cập nhật người dùng thành công',
+            data: user,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Xóa người dùng (cho admin)
+const deleteUser = async (req, res, next) => {
+    try {
+        await userService.deleteUser(req.params.id);
+        res.status(httpStatus.OK).send({
+            status: 'success',
+            message: 'Xóa người dùng thành công',
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+
 module.exports = {
   getUsers,
   createUser,
@@ -130,4 +157,6 @@ module.exports = {
   updateMe,
   updateAvatar,
   changePassword,
+  updateUser,
+  deleteUser,
 };
