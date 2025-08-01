@@ -41,9 +41,14 @@ exports.updateSettings = async (req, res, next) => {
                 // Tải file đã xử lý lên R2
                 const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
                 
-                // fieldname được gửi từ frontend có dạng 'banners_home_imageUrl'
-                // Chúng ta cần chuyển nó về dạng 'banners.home.imageUrl' để cập nhật đúng vị trí
-                const path = file.fieldname.replace(/_/g, '.');
+                // SỬA LỖI TẠI ĐÂY: Logic tạo đường dẫn đã được sửa lại
+                // Tách fieldname thành các phần dựa trên dấu gạch dưới đầu tiên và cuối cùng
+                const parts = file.fieldname.split('_');
+                const group = parts.shift(); // Lấy phần đầu tiên (ví dụ: 'banners')
+                const property = parts.pop(); // Lấy phần cuối cùng (ví dụ: 'imageUrl')
+                const key = parts.join('_'); // Nối các phần còn lại để tạo khóa (ví dụ: 'home_secondary_1')
+
+                const path = `${group}.${key}.${property}`; // Tạo đường dẫn chính xác: 'banners.home_secondary_1.imageUrl'
                 
                 // Sử dụng lodash để cập nhật giá trị vào đúng đường dẫn lồng nhau
                 _.set(settingsData, path, url);
