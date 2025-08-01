@@ -18,7 +18,7 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 5000;
 const corsOptions = {
-  origin: ['http://localhost:3000'], 
+  origin: ['http://localhost:3000', 'https://invitation-admin-dashboard-fe.vercel.app', 'https://www.invitation-admin-dashboard-fe.vercel.app', 'https://www.baotrithangmay.vn', 'https://baotrithangmay.vn'], 
   credentials: true, 
 };
 app.use(cors(corsOptions));

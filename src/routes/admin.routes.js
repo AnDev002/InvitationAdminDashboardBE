@@ -69,6 +69,6 @@ router.post('/templates/bulk-import', templateController.bulkCreateTemplates); /
 
 // === Settings & SEO ===
 router.get('/settings', adminController.getSettings);
-router.put('/settings', adminController.updateSettings);
+router.put('/settings', upload.any(), adminController.updateSettings);
 
 module.exports = router;
