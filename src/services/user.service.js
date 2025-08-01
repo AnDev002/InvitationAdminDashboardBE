@@ -51,35 +51,35 @@ const findUserByUsernameOrEmail = async (loginIdentifier) => {
 };
 
 /**
- * ++ MỚI: Cập nhật người dùng bởi ID ++
+ * ++ SỬA LỖI: Cập nhật người dùng bởi ID (cho Admin) ++
  * @param {string} userId - ID của người dùng cần cập nhật
  * @param {object} updateBody - Các trường cần cập nhật
  * @returns {Promise<User>}
  */
 const updateUser = async (userId, updateBody) => {
-    const user = await userModel.findById(userId);
-    if (!user) {
-        throw new ApiError(httpStatus.NOT_FOUND, 'Không tìm thấy người dùng');
-    }
-    
-    // Cập nhật các trường được phép
-    Object.assign(user, updateBody);
+    // Tìm và cập nhật người dùng. Tùy chọn { new: true } trả về document đã được cập nhật.
+    const user = await User.findByIdAndUpdate(userId, updateBody, {
+        new: true,
+        runValidators: true
+    }).select('-password');
 
-    await user.save();
+    if (!user) {
+        throw new Error('Không tìm thấy người dùng để cập nhật.');
+    }
     return user;
 };
 
 /**
- * ++ MỚI: Xóa người dùng bởi ID ++
+ * ++ SỬA LỖI: Xóa người dùng bởi ID (cho Admin) ++
  * @param {string} userId - ID của người dùng cần xóa
  * @returns {Promise<void>}
  */
 const deleteUser = async (userId) => {
-    const user = await userModel.findById(userId);
+    const user = await User.findByIdAndDelete(userId);
     if (!user) {
-        throw new ApiError(httpStatus.NOT_FOUND, 'Không tìm thấy người dùng');
+        throw new Error('Không tìm thấy người dùng để xóa.');
     }
-    await user.deleteOne(); // Sử dụng deleteOne() để xóa document
+    // Logic xóa avatar trên R2 nếu có thể thêm ở đây
 };
 module.exports = {
   getAllUsers,

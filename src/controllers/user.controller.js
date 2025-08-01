@@ -122,10 +122,16 @@ const changePassword = async (req, res, next) => {
     }
 };
 
+// ++ SỬA LỖI: Cập nhật người dùng (cho Admin) ++
 const updateUser = async (req, res, next) => {
     try {
-        const user = await userService.updateUser(req.params.id, req.body);
-        res.status(httpStatus.OK).send({
+        // Không cho phép admin thay đổi mật khẩu trực tiếp từ form này
+        const { password, ...updateData } = req.body;
+        const user = await userService.updateUser(req.params.id, updateData);
+        if (!user) {
+            return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+        }
+        res.status(200).send({ // Sử dụng mã 200
             status: 'success',
             message: 'Cập nhật người dùng thành công',
             data: user,
@@ -135,11 +141,11 @@ const updateUser = async (req, res, next) => {
     }
 };
 
-// Xóa người dùng (cho admin)
+// ++ SỬA LỖI: Xóa người dùng (cho Admin) ++
 const deleteUser = async (req, res, next) => {
     try {
         await userService.deleteUser(req.params.id);
-        res.status(httpStatus.OK).send({
+        res.status(200).send({ // Sử dụng mã 200
             status: 'success',
             message: 'Xóa người dùng thành công',
         });
@@ -147,6 +153,7 @@ const deleteUser = async (req, res, next) => {
         next(error);
     }
 };
+
 
 
 module.exports = {

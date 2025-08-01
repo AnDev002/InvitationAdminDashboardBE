@@ -9,6 +9,7 @@ const productController = require('../controllers/product.controller');
 const templateController = require('../controllers/invitationTemplate.controller');
 const userController = require('../controllers/user.controller');
 const { upload, resizeImage, uploadImageToR2 } = require('../middleware/upload.middleware');
+const { validateProduct } = require('../utils/validators'); // <-- THÊM DÒNG NÀY
 
 // ===== BẢO VỆ TẤT CẢ CÁC ROUTE BÊN DƯỚI =====
 // Tất cả các route trong file này đều yêu cầu đăng nhập VÀ phải là admin
@@ -16,19 +17,46 @@ router.use(protect);
 router.use(authorize('admin'));
 
 
+const productUpload = upload.fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'images', maxCount: 10 }
+]);
 // === Dashboard ===
 router.get('/dashboard', adminController.getDashboardData);
 
 // === User (cho admin xem và thông tin cá nhân của admin) ===
-router.get('/users', userController.getUsers);
 router.get('/users/me', userController.getMe);
-router.get('/users/:id', userController.getUser);
 
-// === Product Management ===
-router.get('/products', productController.getProducts);
-router.post('/products', productController.createProduct); // Thêm các middleware upload nếu cần
-router.put('/products/:id', productController.updateProduct);
-router.delete('/products/:id', productController.deleteProduct);
+router.route('/users')
+    .get(userController.getUsers) // Lấy danh sách users
+    .post(userController.createUser); // Thêm user mới
+
+router.route('/users/:id')
+    .get(userController.getUser) // Lấy chi tiết user
+    .put(userController.updateUser) // Cập nhật user
+    .delete(userController.deleteUser); // Xóa user
+
+// === Product Management (PHẦN ĐÃ SỬA LỖI) ===
+router.route('/products')
+    .get(productController.getProducts)
+    .post(
+        productUpload, // Xử lý upload 1 ảnh tên 'image'
+        resizeImage,            // Resize ảnh
+        uploadImageToR2,        // Tải ảnh lên R2
+        validateProduct,        // Kiểm tra dữ liệu
+        productController.createProduct
+    );
+
+router.route('/products/:id')
+    .put(
+        productUpload,
+        resizeImage,
+        uploadImageToR2,
+        validateProduct,
+        productController.updateProduct
+    )
+    .delete(productController.deleteProduct);
+
 
 // === Template Management ===
 router.get('/templates', templateController.getInvitationTemplates);

@@ -162,6 +162,18 @@ const bulkCreateTemplates = async (req, res, next) => {
     }
 };
 
+// ++ HÀM MỚI ++
+const incrementView = async (req, res, next) => {
+  try {
+    await invitationTemplateService.incrementTemplateView(req.params.id);
+    res.status(200).json({ success: true, message: 'View counted.' });
+  } catch (error) {
+    // Không cần gửi lỗi về client vì đây là hành động nền
+    console.error(`Could not count view for template ${req.params.id}:`, error);
+    res.status(200).json({ success: false }); // Vẫn trả về 200
+  }
+};
+
 module.exports = {
     getInvitationTemplates,
     getTemplateById,
@@ -171,4 +183,5 @@ module.exports = {
     seedTemplates,
     getTemplateCategories,
     bulkCreateTemplates,
+    incrementView,
 };

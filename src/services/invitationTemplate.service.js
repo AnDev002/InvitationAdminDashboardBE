@@ -37,6 +37,14 @@ const bulkCreateTemplates = async (templates) => {
   // `rawResult: true` để có kết quả chi tiết
   return await InvitationTemplate.insertMany(templates, { ordered: false });
 };
+/**
+ * ++ HÀM MỚI ++
+ * Tăng số lượt xem của mẫu thiệp lên 1.
+ * @param {string} templateId - ID của mẫu thiệp.
+ */
+const incrementTemplateView = async (templateId) => {
+  return await InvitationTemplate.findByIdAndUpdate(templateId, { $inc: { views: 1 } });
+};
 module.exports = {
   queryInvitationTemplates,
   getTemplateById,
@@ -45,4 +53,5 @@ module.exports = {
   deleteTemplateById,
   getUniqueCategories,
   bulkCreateTemplates,
+  incrementTemplateView,
 };
