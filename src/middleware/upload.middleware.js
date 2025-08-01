@@ -24,8 +24,8 @@ export const upload = multer({
 
 // Middleware để resize ảnh
 export const resizeImage = async (req, res, next) => {
-  if (!req.file) {
-    return next(); // Không có file, bỏ qua
+  if (!req.file || req.file.mimetype === 'image/gif') {
+    return next(); 
   }
 
   try {
