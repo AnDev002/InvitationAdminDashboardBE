@@ -12,6 +12,7 @@ const dataAdminRoutes = require('./src/routes/admin.routes');
 const designAssetRoutes = require('./src/routes/designAsset.routes'); 
 const userRoutes = require('./src/routes/user.routes');
 const invitationTemplateRoutes = require('./src/routes/invitationTemplate.routes');
+const publicRoutes = require('./src/routes/public.routes');
 require('./src/config/passport');
 dotenv.config();
 const app = express();
@@ -38,6 +39,7 @@ app.use('/api/v1/admin', adminApiRouter);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/design-assets', designAssetRoutes);
 app.use('/api/v1/invitation-templates', invitationTemplateRoutes);
+app.use('/api/v1/public', publicRoutes);
 app.use(errorHandler);
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
