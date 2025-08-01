@@ -50,10 +50,26 @@ const getDashboardData = async () => {
 const getSettings = async () => {
     let settings = await Setting.findOne({ singletonKey: "main_settings" });
     if (!settings) {
-        settings = await Setting.create({ singletonKey: "main_settings" });
+        // Nếu chưa có, tạo mới với các giá trị mặc định để tránh lỗi null ở frontend
+        console.log("Creating default settings document...");
+        settings = await Setting.create({
+            singletonKey: "main_settings",
+            livePreviewUrl: "https://baotrithangmay.vn",
+            headerNav: [],
+            theme: {
+                announcementBar: { text: 'Chào mừng đến với cửa hàng!', isEnabled: true }
+            },
+            banners: {},
+            footer: {
+                socialLinks: {},
+                columns: []
+            },
+            seo: {}
+        });
     }
     return settings;
 };
+
 
 const updateSettings = async (updateData) => {
     return await Setting.findOneAndUpdate(
