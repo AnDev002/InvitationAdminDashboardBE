@@ -24,6 +24,7 @@ const settingsSchema = new mongoose.Schema({
         home_secondary_1: { imageUrl: String, title: String, subtitle: String },
         home_secondary_2: { imageUrl: String, title: String, subtitle: String },
         professional: { imageUrl: String, title: String, subtitle: String },
+        professional_secondary_1: { imageUrl: String, title: String, subtitle: String },
         invitations: { imageUrl: String, title: String, subtitle: String },
         shop: { imageUrl: String, title: String, subtitle: String },
     },
