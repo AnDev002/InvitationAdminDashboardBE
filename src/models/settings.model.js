@@ -27,7 +27,6 @@ const settingsSchema = new mongoose.Schema({
         invitations: { imageUrl: String, title: String, subtitle: String },
         shop: { imageUrl: String, title: String, subtitle: String },
     },
-    banners: Object,
     footer: Object,
     seo: Object,
 });
