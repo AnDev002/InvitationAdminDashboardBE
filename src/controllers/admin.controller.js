@@ -26,39 +26,39 @@ exports.getSettings = async (req, res, next) => {
 
 exports.updateSettings = async (req, res, next) => {
     try {
-        // Dữ liệu văn bản sẽ được gửi dưới dạng chuỗi JSON trong trường 'settings'
         const settingsData = JSON.parse(req.body.settings || '{}');
 
-        // Xử lý các file đã tải lên (nếu có)
         if (req.files && req.files.length > 0) {
             const uploadPromises = req.files.map(async (file) => {
-                // Xử lý ảnh (resize, nén) trước khi upload
-                const processedBuffer = await sharp(file.buffer)
-                    .resize({ width: 1920, fit: 'inside', withoutEnlargement: true })
-                    .webp({ quality: 85 })
-                    .toBuffer();
-                
-                // Tải file đã xử lý lên R2
-                const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
-                
-                // SỬA LỖI TẠI ĐÂY: Logic tạo đường dẫn đã được sửa lại
-                // Tách fieldname thành các phần dựa trên dấu gạch dưới đầu tiên và cuối cùng
-                const parts = file.fieldname.split('_');
-                const group = parts.shift(); // Lấy phần đầu tiên (ví dụ: 'banners')
-                const property = parts.pop(); // Lấy phần cuối cùng (ví dụ: 'imageUrl')
-                const key = parts.join('_'); // Nối các phần còn lại để tạo khóa (ví dụ: 'home_secondary_1')
+                let fileBuffer = file.buffer;
+                let fileMimeType = file.mimetype;
 
-                const path = `${group}.${key}.${property}`; // Tạo đường dẫn chính xác: 'banners.home_secondary_1.imageUrl'
+                // === BẮT ĐẦU THAY ĐỔI TẠI ĐÂY ===
+                // Chỉ xử lý ảnh nếu nó không phải là GIF
+                if (file.mimetype !== 'image/gif') {
+                    fileBuffer = await sharp(file.buffer)
+                        .resize({ width: 1920, fit: 'inside', withoutEnlargement: true })
+                        .webp({ quality: 85 })
+                        .toBuffer();
+                    fileMimeType = 'image/webp'; // Cập nhật lại mimetype sau khi chuyển đổi
+                }
+                // === KẾT THÚC THAY ĐỔI ===
+
+                // Tải file (đã xử lý hoặc file GIF gốc) lên R2
+                const { url } = await uploadFileToR2(fileBuffer, fileMimeType);
                 
-                // Sử dụng lodash để cập nhật giá trị vào đúng đường dẫn lồng nhau
+                const parts = file.fieldname.split('_');
+                const group = parts.shift();
+                const property = parts.pop();
+                const key = parts.join('_');
+                const path = `${group}.${key}.${property}`;
+                
                 _.set(settingsData, path, url);
             });
 
-            // Chờ tất cả các file được upload xong
             await Promise.all(uploadPromises);
         }
         
-        // Gọi service để lưu đối tượng settings hoàn chỉnh
         const updatedSettings = await adminService.updateSettings(settingsData);
         
         res.status(200).json({
