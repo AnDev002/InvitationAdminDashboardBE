@@ -4,6 +4,46 @@ const pageService = require('../services/page.service');
 const { uploadFileToR2 } = require('../services/r2.service');
 const sharp = require('sharp');
 
+const processContentFiles = async (contentBlocks, files) => {
+    if (!Array.isArray(contentBlocks) || !Array.isArray(files) || files.length === 0) {
+        return contentBlocks;
+    }
+
+    // Tạo một map để dễ dàng tìm kiếm file
+    const fileMap = new Map(files.map(f => [f.originalname, f]));
+
+    const processedBlocks = await Promise.all(contentBlocks.map(async (block) => {
+        // Chỉ xử lý các khối hình ảnh có placeholder
+        if (block.type === 'image' && block.content && block.content.startsWith('[[file:')) {
+            const fileName = block.content.match(/\[\[file:(.*?)\]\]/)[1];
+            const file = fileMap.get(fileName);
+
+            if (file) {
+                try {
+                    // Tối ưu hóa ảnh với sharp
+                    const processedBuffer = await sharp(file.buffer)
+                        .resize({ width: 1200, fit: 'inside', withoutEnlargement: true })
+                        .webp({ quality: 80 })
+                        .toBuffer();
+                    
+                    // Tải lên R2
+                    const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
+                    
+                    // Trả về khối đã được cập nhật với URL mới
+                    return { ...block, content: url };
+                } catch (error) {
+                    console.error("Lỗi xử lý ảnh nội dung:", error);
+                    // Nếu lỗi, trả về khối gốc để không làm gián đoạn
+                    return block;
+                }
+            }
+        }
+        // Trả về các khối khác không thay đổi
+        return block;
+    }));
+
+    return processedBlocks;
+};
 // ++ MỚI: Hàm trợ giúp để xử lý upload ảnh trong nội dung
 const processContentImages = async (contentBlocks) => {
     if (!Array.isArray(contentBlocks)) return [];
@@ -63,10 +103,17 @@ exports.createPage = async (req, res, next) => {
             return res.status(401).json({ message: 'Xác thực không thành công, không thể xác định tác giả.' });
         }
         
+        // Dữ liệu từ form đã được multer phân tích
         const pageData = { ...req.body };
-        // Xử lý upload ảnh cho các khối nội dung
-        if (pageData.content && Array.isArray(pageData.content)) {
-            pageData.content = await processContentImages(pageData.content);
+        const contentBlocks = JSON.parse(pageData.content || '[]');
+
+        // Xử lý upload ảnh cho các khối nội dung từ req.files
+        const processedContent = await processContentFiles(contentBlocks, req.files);
+        pageData.content = processedContent;
+
+        // Parse SEO data
+        if (pageData.seo && typeof pageData.seo === 'string') {
+            pageData.seo = JSON.parse(pageData.seo);
         }
 
         const newPage = await pageService.createPage({ ...pageData, author: req.user.id });
@@ -79,13 +126,20 @@ exports.createPage = async (req, res, next) => {
     }
 };
 
+
 // ++ THAY ĐỔI: Cập nhật hàm updatePage
 exports.updatePage = async (req, res, next) => {
     try {
         const pageData = { ...req.body };
-        // Xử lý upload ảnh cho các khối nội dung
-        if (pageData.content && Array.isArray(pageData.content)) {
-            pageData.content = await processContentImages(pageData.content);
+        const contentBlocks = JSON.parse(pageData.content || '[]');
+        
+        // Xử lý upload ảnh cho các khối nội dung từ req.files
+        const processedContent = await processContentFiles(contentBlocks, req.files);
+        pageData.content = processedContent;
+
+        // Parse SEO data
+        if (pageData.seo && typeof pageData.seo === 'string') {
+            pageData.seo = JSON.parse(pageData.seo);
         }
 
         const updatedPage = await pageService.updatePage(req.params.id, pageData);
@@ -98,6 +152,7 @@ exports.updatePage = async (req, res, next) => {
         next(error); 
     }
 };
+
 
 exports.deletePage = async (req, res, next) => {
     try {

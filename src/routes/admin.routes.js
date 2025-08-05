@@ -13,6 +13,7 @@ const pageRoutes = require('./page.routes');
 const { upload, resizeImage, uploadImageToR2 } = require('../middleware/upload.middleware');
 const { validateProduct } = require('../utils/validators');
 
+
 // ===== BẢO VỆ TẤT CẢ CÁC ROUTE BÊN DƯỚI =====
 // Tất cả các route trong file này đều yêu cầu đăng nhập VÀ phải là admin
 router.use(protect);
@@ -70,7 +71,7 @@ router.delete('/templates/:id', templateController.deleteTemplate);
 router.post('/templates/bulk-import', templateController.bulkCreateTemplates);
 
 // --- THÊM MỚI: Gắn các route quản lý trang vào đây ---
-router.use('/pages', pageRoutes);
+router.use('/pages', upload.any(), pageRoutes);
 
 // === Settings & SEO ===
 router.get('/settings', adminController.getSettings);

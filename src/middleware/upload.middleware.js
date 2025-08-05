@@ -14,7 +14,6 @@ const fileFilter = (req, file, cb) => {
     cb(new Error('Not an image! Please upload only images.'), false);
   }
 };
-
 // ++ THAY ĐỔI: Tăng giới hạn file size để cho phép upload ảnh nội dung trang ++
 export const upload = multer({
   storage: storage,
