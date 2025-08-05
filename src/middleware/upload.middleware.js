@@ -1,7 +1,6 @@
 // src/middleware/upload.middleware.js
 import multer from 'multer';
 import sharp from 'sharp';
-// --- THÊM DÒNG NÀY ---
 import { uploadFileToR2 } from '../services/r2.service.js';
 
 // Cấu hình multer để lưu file trong memory
@@ -16,15 +15,17 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+// ++ THAY ĐỔI: Tăng giới hạn file size để cho phép upload ảnh nội dung trang ++
 export const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
-  limits: { fileSize: 1024 * 1024 * 10 }, // Giới hạn 5MB
+  limits: { fileSize: 1024 * 1024 * 10 }, // Giới hạn 10MB
 });
 
 // Middleware để resize ảnh
 export const resizeImage = async (req, res, next) => {
-  if (!req.file || req.file.mimetype === 'image/gif') {
+  // ++ THAY ĐỔI: Bỏ qua resize nếu có nhiều file (cho content blocks)
+  if (!req.file || req.files) {
     return next(); 
   }
 
@@ -45,8 +46,9 @@ export const resizeImage = async (req, res, next) => {
 
 // --- TẠO MIDDLEWARE MỚI ĐỂ UPLOAD LÊN R2 ---
 export const uploadImageToR2 = async (req, res, next) => {
-  if (!req.file) {
-    return next(); // Không có file, bỏ qua
+  // ++ THAY ĐỔI: Bỏ qua nếu có nhiều file (sẽ được xử lý trong controller)
+  if (!req.file || req.files) {
+    return next(); // Không có file hoặc có nhiều file, bỏ qua
   }
 
   try {
