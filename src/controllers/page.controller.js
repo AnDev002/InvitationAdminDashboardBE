@@ -18,13 +18,18 @@ exports.getPage = async (req, res, next) => {
 
 exports.createPage = async (req, res, next) => {
     try {
-        // --- THÊM MỚI: Kiểm tra an toàn ---
         if (!req.user || !req.user.id) {
             return res.status(401).json({ message: 'Xác thực không thành công, không thể xác định tác giả.' });
         }
         const newPage = await pageService.createPage({ ...req.body, author: req.user.id });
         res.status(201).json({ status: 'success', data: newPage });
-    } catch (error) { next(error); }
+    } catch (error) {
+        // --- THÊM MỚI: Xử lý lỗi trùng lặp slug ---
+        if (error.code === 11000) {
+            return res.status(409).json({ message: 'Lỗi: Đường dẫn (slug) này đã tồn tại. Vui lòng chọn một đường dẫn khác.' });
+        }
+        next(error);
+    }
 };
 
 exports.updatePage = async (req, res, next) => {
@@ -32,7 +37,13 @@ exports.updatePage = async (req, res, next) => {
         const updatedPage = await pageService.updatePage(req.params.id, req.body);
         if (!updatedPage) return res.status(404).json({ message: 'Không tìm thấy trang' });
         res.status(200).json({ status: 'success', data: updatedPage });
-    } catch (error) { next(error); }
+    } catch (error) { 
+        // --- THÊM MỚI: Xử lý lỗi trùng lặp slug khi cập nhật ---
+        if (error.code === 11000) {
+            return res.status(409).json({ message: 'Lỗi: Đường dẫn (slug) này đã tồn tại. Vui lòng chọn một đường dẫn khác.' });
+        }
+        next(error); 
+    }
 };
 
 exports.deletePage = async (req, res, next) => {
