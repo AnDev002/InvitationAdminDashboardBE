@@ -12,6 +12,9 @@ const contentBlockSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    alt: { 
+        type: String 
+    },
     // Bạn có thể thêm các thuộc tính khác sau này, vd: caption cho ảnh
 }, { _id: true });
 
