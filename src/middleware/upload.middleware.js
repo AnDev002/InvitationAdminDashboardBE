@@ -19,7 +19,7 @@ const fileFilter = (req, file, cb) => {
 export const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
-  limits: { fileSize: 1024 * 1024 * 5 }, // Giới hạn 5MB
+  limits: { fileSize: 1024 * 1024 * 10 }, // Giới hạn 5MB
 });
 
 // Middleware để resize ảnh
