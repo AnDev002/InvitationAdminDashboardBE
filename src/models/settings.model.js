@@ -29,7 +29,39 @@ const settingsSchema = new mongoose.Schema({
         shop: { imageUrl: String, title: String, subtitle: String },
     },
     footer: Object,
-    seo: Object,
+    
+    seo: {
+        pages: {
+            home: {
+                title: String,
+                description: String,
+                keywords: String,
+                social: { ogTitle: String, ogDescription: String, ogImage: String }
+            },
+            products: { 
+                title: String,
+                description: String,
+                keywords: String,
+                social: { ogTitle: String, ogDescription: String, ogImage: String }
+            },
+            invitations: { 
+                title: String,
+                description: String,
+                keywords: String,
+                social: { ogTitle: String, ogDescription: String, ogImage: String }
+            },
+        },
+        global: {
+            robotsTxt: { type: String, default: "User-agent: *\nAllow: /" },
+            organizationSchema: { type: mongoose.Schema.Types.Mixed }
+        },
+        redirects: [{
+            id: String,
+            source: String,
+            destination: String,
+            type: { type: String, enum: ['301', '302'] }
+        }]
+    }
 });
 
 const Setting = mongoose.model('Setting', settingsSchema);
