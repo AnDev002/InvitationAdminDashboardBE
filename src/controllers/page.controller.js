@@ -18,6 +18,10 @@ exports.getPage = async (req, res, next) => {
 
 exports.createPage = async (req, res, next) => {
     try {
+        // --- THÊM MỚI: Kiểm tra an toàn ---
+        if (!req.user || !req.user.id) {
+            return res.status(401).json({ message: 'Xác thực không thành công, không thể xác định tác giả.' });
+        }
         const newPage = await pageService.createPage({ ...req.body, author: req.user.id });
         res.status(201).json({ status: 'success', data: newPage });
     } catch (error) { next(error); }

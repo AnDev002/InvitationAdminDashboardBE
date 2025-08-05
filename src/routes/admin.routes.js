@@ -8,8 +8,10 @@ const adminController = require('../controllers/admin.controller');
 const productController = require('../controllers/product.controller');
 const templateController = require('../controllers/invitationTemplate.controller');
 const userController = require('../controllers/user.controller');
+// --- THÊM MỚI: Import page routes ---
+const pageRoutes = require('./page.routes'); 
 const { upload, resizeImage, uploadImageToR2 } = require('../middleware/upload.middleware');
-const { validateProduct } = require('../utils/validators'); // <-- THÊM DÒNG NÀY
+const { validateProduct } = require('../utils/validators');
 
 // ===== BẢO VỆ TẤT CẢ CÁC ROUTE BÊN DƯỚI =====
 // Tất cả các route trong file này đều yêu cầu đăng nhập VÀ phải là admin
@@ -28,22 +30,22 @@ router.get('/dashboard', adminController.getDashboardData);
 router.get('/users/me', userController.getMe);
 
 router.route('/users')
-    .get(userController.getUsers) // Lấy danh sách users
-    .post(userController.createUser); // Thêm user mới
+    .get(userController.getUsers)
+    .post(userController.createUser);
 
 router.route('/users/:id')
-    .get(userController.getUser) // Lấy chi tiết user
-    .put(userController.updateUser) // Cập nhật user
-    .delete(userController.deleteUser); // Xóa user
+    .get(userController.getUser)
+    .put(userController.updateUser)
+    .delete(userController.deleteUser);
 
-// === Product Management (PHẦN ĐÃ SỬA LỖI) ===
+// === Product Management ===
 router.route('/products')
     .get(productController.getProducts)
     .post(
-        productUpload, // Xử lý upload 1 ảnh tên 'image'
-        resizeImage,            // Resize ảnh
-        uploadImageToR2,        // Tải ảnh lên R2
-        validateProduct,        // Kiểm tra dữ liệu
+        productUpload,
+        resizeImage,
+        uploadImageToR2,
+        validateProduct,
         productController.createProduct
     );
 
@@ -65,7 +67,10 @@ router.post('/templates', upload.single('image'), resizeImage, uploadImageToR2, 
 router.get('/templates/:id', templateController.getTemplateById);
 router.put('/templates/:id', upload.single('image'), resizeImage, uploadImageToR2, templateController.updateTemplate);
 router.delete('/templates/:id', templateController.deleteTemplate);
-router.post('/templates/bulk-import', templateController.bulkCreateTemplates); // <-- THÊM ROUTE MỚI
+router.post('/templates/bulk-import', templateController.bulkCreateTemplates);
+
+// --- THÊM MỚI: Gắn các route quản lý trang vào đây ---
+router.use('/pages', pageRoutes);
 
 // === Settings & SEO ===
 router.get('/settings', adminController.getSettings);
