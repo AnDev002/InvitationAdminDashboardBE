@@ -1,6 +1,21 @@
 // TrainData/AdminBE/models/page.model.js
 const mongoose = require('mongoose');
 
+// ++ MỚI: Schema cho các khối nội dung
+const contentBlockSchema = new mongoose.Schema({
+    type: {
+        type: String,
+        required: true,
+        enum: ['text', 'image'],
+    },
+    content: { // Sẽ chứa text hoặc URL ảnh
+        type: String,
+        required: true,
+    },
+    // Bạn có thể thêm các thuộc tính khác sau này, vd: caption cho ảnh
+}, { _id: true });
+
+
 const pageSchema = new mongoose.Schema({
     title: {
         type: String,
@@ -14,9 +29,10 @@ const pageSchema = new mongoose.Schema({
         trim: true,
         lowercase: true,
     },
+    // ++ THAY ĐỔI: Sử dụng content schema mới
     content: {
-        type: String, // Sẽ lưu nội dung HTML từ trình soạn thảo
-        default: '',
+        type: [contentBlockSchema],
+        default: [],
     },
     seo: {
         metaTitle: { type: String, trim: true },
