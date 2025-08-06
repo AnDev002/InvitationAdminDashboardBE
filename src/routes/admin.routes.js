@@ -10,39 +10,40 @@ const templateController = require('../controllers/invitationTemplate.controller
 const userController = require('../controllers/user.controller');
 // --- THÊM MỚI: Import page routes ---
 const pageRoutes = require('./page.routes'); 
+const designAssetRoutes = require('./designAsset.routes');
 const { upload, resizeImage, uploadImageToR2 } = require('../middleware/upload.middleware');
 const { validateProduct } = require('../utils/validators');
 
 
+router.use(protect);
+
+router.get('/users/me', userController.getMe);
 // ===== BẢO VỆ TẤT CẢ CÁC ROUTE BÊN DƯỚI =====
 // Tất cả các route trong file này đều yêu cầu đăng nhập VÀ phải là admin
-router.use(protect);
 router.use(authorize('admin'));
+// === Dashboard ===
+router.get('/dashboard', adminController.getDashboardData);
+// === User (cho admin xem và thông tin cá nhân của admin) ===
+router.route('/users')
+    .get(userController.getUsers)
+    .post(userController.createUser);
+router.route('/users/:id')
+    .get(userController.getUser)
+    .put(userController.updateUser)
+    .delete(userController.deleteUser);
 
 
 const productUpload = upload.fields([
     { name: 'image', maxCount: 1 },
     { name: 'images', maxCount: 10 }
 ]);
-// === Dashboard ===
-router.get('/dashboard', adminController.getDashboardData);
 
-// === User (cho admin xem và thông tin cá nhân của admin) ===
-router.get('/users/me', userController.getMe);
-
-router.route('/users')
-    .get(userController.getUsers)
-    .post(userController.createUser);
-
-router.route('/users/:id')
-    .get(userController.getUser)
-    .put(userController.updateUser)
-    .delete(userController.deleteUser);
 
 // === Product Management ===
 router.route('/products')
-    .get(productController.getProducts)
+    .get(authorize('admin', 'designer'), productController.getProducts)
     .post(
+        authorize('admin', 'designer'), 
         productUpload,
         resizeImage,
         uploadImageToR2,
@@ -52,29 +53,30 @@ router.route('/products')
 
 router.route('/products/:id')
     .put(
+        authorize('admin', 'designer'), 
         productUpload,
         resizeImage,
         uploadImageToR2,
         validateProduct,
         productController.updateProduct
     )
-    .delete(productController.deleteProduct);
+    .delete(authorize('admin', 'designer'), productController.deleteProduct);
 
 
 // === Template Management ===
-router.get('/templates', templateController.getInvitationTemplates);
-router.get('/templates/categories', templateController.getTemplateCategories);
-router.post('/templates', upload.single('image'), resizeImage, uploadImageToR2, templateController.createTemplate);
-router.get('/templates/:id', templateController.getTemplateById);
-router.put('/templates/:id', upload.single('image'), resizeImage, uploadImageToR2, templateController.updateTemplate);
-router.delete('/templates/:id', templateController.deleteTemplate);
-router.post('/templates/bulk-import', templateController.bulkCreateTemplates);
+router.get('/templates', authorize('admin', 'designer'), templateController.getInvitationTemplates);
+router.get('/templates/categories', authorize('admin', 'designer'), templateController.getTemplateCategories);
+router.post('/templates', authorize('admin', 'designer'), upload.single('image'), resizeImage, uploadImageToR2, templateController.createTemplate);
+router.get('/templates/:id', authorize('admin', 'designer'), templateController.getTemplateById);
+router.put('/templates/:id', authorize('admin', 'designer'), upload.single('image'), resizeImage, uploadImageToR2, templateController.updateTemplate);
+router.delete('/templates/:id', authorize('admin', 'designer'), templateController.deleteTemplate);
+router.post('/templates/bulk-import', authorize('admin', 'designer'), templateController.bulkCreateTemplates);
 
 // --- THÊM MỚI: Gắn các route quản lý trang vào đây ---
-router.use('/pages', upload.any(), pageRoutes);
+router.use('/pages', authorize('admin', 'marketing'), upload.any(), pageRoutes);
 
 // === Settings & SEO ===
-router.get('/settings', adminController.getSettings);
-router.put('/settings', upload.any(), adminController.updateSettings);
+router.get('/settings', authorize('admin', 'marketing'), adminController.getSettings);
+router.put('/settings', authorize('admin', 'marketing'), upload.any(), adminController.updateSettings);
 
 module.exports = router;

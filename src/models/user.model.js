@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true, trim: true },
     email: { type: String, required: true, unique: true, trim: true, lowercase: true },
     password: { type: String, required: true, select: false }, // Ẩn password khi query
-    role: { type: String, enum: ['user', 'admin'], default: 'user' },
+    role: { type: String, enum: ['user', 'admin', 'designer', 'marketing'], default: 'user' },
     firstName: { type: String, default: '' },
     lastName: { type: String, default: '' },
     phone: { type: String, default: '' },
