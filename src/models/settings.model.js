@@ -22,7 +22,8 @@ const settingsSchema = new mongoose.Schema({
             isEnabled: Boolean,
             backgroundColor: String, 
             textColor: String,    
-            link: String    
+            link: String,
+            backgroundImage: String
         }
     },
     banners: {
