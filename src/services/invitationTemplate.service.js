@@ -32,6 +32,18 @@ const getUniqueCategories = async () => {
   return await InvitationTemplate.distinct('category');
 };
 
+// ++ BẮT ĐẦU THÊM MỚI ++
+/**
+ * Lấy danh sách các 'type' duy nhất cho một category cụ thể.
+ * @param {string} category - Tên của category.
+ * @returns {Promise<Array<string>>}
+ */
+const getUniqueTypesForCategory = async (category) => {
+  return await InvitationTemplate.distinct('type', { category: category });
+};
+// ++ KẾT THÚC THÊM MỚI ++
+
+
 const bulkCreateTemplates = async (templates) => {
   // `ordered: false` cho phép tiếp tục insert các bản ghi hợp lệ khác dù có lỗi (vd: trùng title)
   // `rawResult: true` để có kết quả chi tiết
@@ -52,6 +64,7 @@ module.exports = {
   updateTemplateById,
   deleteTemplateById,
   getUniqueCategories,
+  getUniqueTypesForCategory, // ++ THÊM MỚI ++
   bulkCreateTemplates,
   incrementTemplateView,
 };
