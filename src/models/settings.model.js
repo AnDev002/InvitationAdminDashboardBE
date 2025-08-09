@@ -17,7 +17,13 @@ const settingsSchema = new mongoose.Schema({
         fontFamily: String,
         customFontUrl: String,
         logoUrl: String,
-        announcementBar: { text: String, isEnabled: Boolean }
+        announcementBar: { 
+            text: String, 
+            isEnabled: Boolean,
+            backgroundColor: String, 
+            textColor: String,    
+            link: String    
+        }
     },
     banners: {
         home: { imageUrl: String, title: String, subtitle: String },
