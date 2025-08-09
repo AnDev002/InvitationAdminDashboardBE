@@ -7,7 +7,10 @@ const { uploadFileToR2 } = require('../services/r2.service');
 // Dashboard
 exports.getDashboardData = async (req, res, next) => {
     try {
-        const data = await adminService.getDashboardData();
+        // Lấy các tham số filter từ query string
+        const { startDate, endDate, role, category } = req.query;
+        // Truyền các filter vào service
+        const data = await adminService.getDashboardData({ startDate, endDate, role, category });
         res.status(200).json(data);
     } catch (error) {
         next(error);
