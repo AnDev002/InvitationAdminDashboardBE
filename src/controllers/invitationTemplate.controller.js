@@ -125,6 +125,24 @@ const getTemplateCategories = async (req, res, next) => {
     }
 };
 
+// ++ BẮT ĐẦU THÊM MỚI ++
+const getTemplateTypesForCategory = async (req, res, next) => {
+    try {
+        const { category } = req.query;
+        if (!category) {
+            return res.status(400).json({ message: 'Category is required.' });
+        }
+        const types = await invitationTemplateService.getUniqueTypesForCategory(category);
+        res.status(200).json({
+            status: 'success',
+            data: types,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+// ++ KẾT THÚC THÊM MỚI ++
+
 const bulkCreateTemplates = async (req, res, next) => {
     try {
         const templatesToCreate = req.body.templates; // Nhận mảng templates từ frontend
@@ -182,6 +200,7 @@ module.exports = {
     deleteTemplate,
     seedTemplates,
     getTemplateCategories,
+    getTemplateTypesForCategory, // ++ THÊM MỚI ++
     bulkCreateTemplates,
     incrementView,
 };

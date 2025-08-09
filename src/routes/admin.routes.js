@@ -66,6 +66,9 @@ router.route('/products/:id')
 // === Template Management ===
 router.get('/templates', authorize('admin', 'designer'), templateController.getInvitationTemplates);
 router.get('/templates/categories', authorize('admin', 'designer'), templateController.getTemplateCategories);
+// ++ BẮT ĐẦU THÊM MỚI ++
+router.get('/templates/types', authorize('admin', 'designer'), templateController.getTemplateTypesForCategory);
+// ++ KẾT THÚC THÊM MỚI ++
 router.post('/templates', authorize('admin', 'designer'), upload.single('image'), resizeImage, uploadImageToR2, templateController.createTemplate);
 router.get('/templates/:id', authorize('admin', 'designer'), templateController.getTemplateById);
 router.put('/templates/:id', authorize('admin', 'designer'), upload.single('image'), resizeImage, uploadImageToR2, templateController.updateTemplate);
