@@ -5,35 +5,34 @@ class APIFeatures {
   }
 
   filter() {
+    // 1. Tạo bản sao của object query string
     const queryObj = { ...this.queryString };
+
+    // 2. Loại bỏ các trường đặc biệt khỏi bộ lọc
     const excludedFields = ['page', 'sort', 'limit', 'fields', 'search'];
     excludedFields.forEach(el => delete queryObj[el]);
 
-    // === BẮT ĐẦU THAY ĐỔI TẠI ĐÂY ===
-
-    // 1. Chuyển đổi các trường lọc chuỗi thành truy vấn Regex
-    // Điều này giúp tìm kiếm linh hoạt hơn, không phân biệt chữ hoa/thường
-    const filterConditions = {};
-    for (const key in queryObj) {
-      const value = queryObj[key];
-      // Chỉ áp dụng regex cho các giá trị là chuỗi và không rỗng
-      if (typeof value === 'string' && value.trim() !== '') {
-        // Tạo một biểu thức chính quy để tìm kiếm không phân biệt chữ hoa/thường
-        filterConditions[key] = { $regex: new RegExp(`^${value}$`, 'i') };
-      } else {
-        // Giữ nguyên các giá trị khác (ví dụ: số, boolean)
-        filterConditions[key] = value;
-      }
-    }
-    
-    // 2. Xử lý các toán tử so sánh (nếu có) - logic này giữ nguyên
-    let queryStr = JSON.stringify(filterConditions);
+    // 3. Xử lý các toán tử so sánh (gte, gt, lte, lt)
+    // Bước này an toàn vì nó chỉ thay thế chuỗi
+    let queryStr = JSON.stringify(queryObj);
     queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, match => `$${match}`);
     
-    // 3. Áp dụng bộ lọc đã cải tiến vào câu lệnh query
-    this.query = this.query.find(JSON.parse(queryStr));
+    const parsedQuery = JSON.parse(queryStr);
 
-    // === KẾT THÚC THAY ĐỔI ===
+    // 4. Lặp qua các trường đã phân tích để chuyển đổi thành truy vấn Regex
+    // Đây là bước sửa lỗi quan trọng: Xây dựng đối tượng query trực tiếp
+    for (const key in parsedQuery) {
+        const value = parsedQuery[key];
+        
+        // Chỉ áp dụng Regex cho các giá trị là chuỗi (string)
+        if (typeof value === 'string') {
+            // Sử dụng $regex và $options: 'i' để tìm kiếm không phân biệt chữ hoa/thường
+            parsedQuery[key] = { $regex: value, $options: 'i' };
+        }
+    }
+
+    // 5. Áp dụng bộ lọc cuối cùng vào câu lệnh query
+    this.query = this.query.find(parsedQuery);
 
     return this;
   }
@@ -43,6 +42,7 @@ class APIFeatures {
       const sortBy = this.queryString.sort.split(',').join(' ');
       this.query = this.query.sort(sortBy);
     } else {
+      // Sắp xếp mặc định nếu không có tham số sort
       this.query = this.query.sort('-createdAt');
     }
     return this;
@@ -53,14 +53,14 @@ class APIFeatures {
       const fields = this.queryString.fields.split(',').join(' ');
       this.query = this.query.select(fields);
     } else {
-      this.query = this.query.select('-__v');
+      this.query = this.query.select('-__v'); // Loại bỏ trường __v
     }
     return this;
   }
 
   paginate() {
     const page = this.queryString.page * 1 || 1;
-    const limit = this.queryString.limit * 1 || 100;
+    const limit = this.queryString.limit * 1 || 100; // Đặt giới hạn mặc định
     const skip = (page - 1) * limit;
 
     this.query = this.query.skip(skip).limit(limit);
