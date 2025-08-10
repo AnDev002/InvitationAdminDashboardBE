@@ -5,22 +5,35 @@ class APIFeatures {
   }
 
   filter() {
-    // 1. Tạo bản sao của object query string
     const queryObj = { ...this.queryString };
-
-    // 2. Loại bỏ các trường đặc biệt khỏi bộ lọc
-    // Chúng ta thêm 'search' vào đây để nó không bị coi là một trường lọc thông thường
     const excludedFields = ['page', 'sort', 'limit', 'fields', 'search'];
     excludedFields.forEach(el => delete queryObj[el]);
 
-    // 3. Xử lý các toán tử so sánh (gte, gt, lte, lt)
-    let queryStr = JSON.stringify(queryObj);
-    queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, match => `$${match}`);
+    // === BẮT ĐẦU THAY ĐỔI TẠI ĐÂY ===
 
-    // 4. Áp dụng bộ lọc vào câu lệnh query
-    // this.query đã chứa điều kiện 'search' từ controller (nếu có)
-    // .find(JSON.parse(queryStr)) sẽ thêm các điều kiện lọc khác như 'category'
+    // 1. Chuyển đổi các trường lọc chuỗi thành truy vấn Regex
+    // Điều này giúp tìm kiếm linh hoạt hơn, không phân biệt chữ hoa/thường
+    const filterConditions = {};
+    for (const key in queryObj) {
+      const value = queryObj[key];
+      // Chỉ áp dụng regex cho các giá trị là chuỗi và không rỗng
+      if (typeof value === 'string' && value.trim() !== '') {
+        // Tạo một biểu thức chính quy để tìm kiếm không phân biệt chữ hoa/thường
+        filterConditions[key] = { $regex: new RegExp(`^${value}$`, 'i') };
+      } else {
+        // Giữ nguyên các giá trị khác (ví dụ: số, boolean)
+        filterConditions[key] = value;
+      }
+    }
+    
+    // 2. Xử lý các toán tử so sánh (nếu có) - logic này giữ nguyên
+    let queryStr = JSON.stringify(filterConditions);
+    queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, match => `$${match}`);
+    
+    // 3. Áp dụng bộ lọc đã cải tiến vào câu lệnh query
     this.query = this.query.find(JSON.parse(queryStr));
+
+    // === KẾT THÚC THAY ĐỔI ===
 
     return this;
   }
@@ -30,7 +43,6 @@ class APIFeatures {
       const sortBy = this.queryString.sort.split(',').join(' ');
       this.query = this.query.sort(sortBy);
     } else {
-      // Sắp xếp mặc định nếu không có tham số sort
       this.query = this.query.sort('-createdAt');
     }
     return this;
@@ -41,14 +53,14 @@ class APIFeatures {
       const fields = this.queryString.fields.split(',').join(' ');
       this.query = this.query.select(fields);
     } else {
-      this.query = this.query.select('-__v'); // Loại bỏ trường __v
+      this.query = this.query.select('-__v');
     }
     return this;
   }
 
   paginate() {
     const page = this.queryString.page * 1 || 1;
-    const limit = this.queryString.limit * 1 || 100; // Đặt giới hạn mặc định
+    const limit = this.queryString.limit * 1 || 100;
     const skip = (page - 1) * limit;
 
     this.query = this.query.skip(skip).limit(limit);
