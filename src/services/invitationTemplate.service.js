@@ -43,6 +43,9 @@ const getUniqueTypesForCategory = async (category) => {
 };
 // ++ KẾT THÚC THÊM MỚI ++
 
+const getUniqueGroups = async () => {
+  return await InvitationTemplate.distinct('group').where('group').ne(null).ne('');
+};
 
 const bulkCreateTemplates = async (templates) => {
   // `ordered: false` cho phép tiếp tục insert các bản ghi hợp lệ khác dù có lỗi (vd: trùng title)
@@ -67,4 +70,5 @@ module.exports = {
   getUniqueTypesForCategory, // ++ THÊM MỚI ++
   bulkCreateTemplates,
   incrementTemplateView,
+  getUniqueGroups,
 };

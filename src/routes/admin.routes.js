@@ -73,6 +73,7 @@ router.post('/templates', authorize('admin', 'designer'), upload.single('image')
 router.get('/templates/:id', authorize('admin', 'designer'), templateController.getTemplateById);
 router.put('/templates/:id', authorize('admin', 'designer'), upload.single('image'), resizeImage, uploadImageToR2, templateController.updateTemplate);
 router.delete('/templates/:id', authorize('admin', 'designer'), templateController.deleteTemplate);
+router.get('/templates/groups', authorize('admin', 'designer'), templateController.getTemplateGroups);
 router.post('/templates/bulk-import', authorize('admin', 'designer'), templateController.bulkCreateTemplates);
 
 // --- THÊM MỚI: Gắn các route quản lý trang vào đây ---

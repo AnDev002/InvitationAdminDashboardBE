@@ -26,6 +26,18 @@ const getInvitationTemplates = async (req, res, next) => {
     }
 };
 
+const getTemplateGroups = async (req, res, next) => {
+    try {
+        const groups = await invitationTemplateService.getUniqueGroups();
+        res.status(200).json({
+            status: 'success',
+            data: groups,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 const getTemplateById = async (req, res, next) => {
     try {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -203,4 +215,5 @@ module.exports = {
     getTemplateTypesForCategory, // ++ THÊM MỚI ++
     bulkCreateTemplates,
     incrementView,
+    getTemplateGroups,
 };
