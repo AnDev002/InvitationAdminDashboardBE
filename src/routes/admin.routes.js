@@ -66,15 +66,15 @@ router.route('/products/:id')
 // === Template Management ===
 router.get('/templates', authorize('admin', 'designer'), templateController.getInvitationTemplates);
 router.get('/templates/categories', authorize('admin', 'designer'), templateController.getTemplateCategories);
-// ++ BẮT ĐẦU THÊM MỚI ++
 router.get('/templates/types', authorize('admin', 'designer'), templateController.getTemplateTypesForCategory);
-// ++ KẾT THÚC THÊM MỚI ++
+router.get('/templates/groups', authorize('admin', 'designer'), templateController.getTemplateGroups); // Route này phải nằm ở đây
+router.post('/templates/bulk-import', authorize('admin', 'designer'), templateController.bulkCreateTemplates);
 router.post('/templates', authorize('admin', 'designer'), upload.single('image'), resizeImage, uploadImageToR2, templateController.createTemplate);
-router.get('/templates/:id', authorize('admin', 'designer'), templateController.getTemplateById);
+
+// ROUTE ĐỘNG (KHÁI QUÁT) ĐƯỢC ĐẶT Ở SAU CÙNG
+router.get('/templates/:id', authorize('admin', 'designer'), templateController.getTemplateById); // Route này phải nằm sau các route tĩnh ở trên
 router.put('/templates/:id', authorize('admin', 'designer'), upload.single('image'), resizeImage, uploadImageToR2, templateController.updateTemplate);
 router.delete('/templates/:id', authorize('admin', 'designer'), templateController.deleteTemplate);
-router.get('/templates/groups', authorize('admin', 'designer'), templateController.getTemplateGroups);
-router.post('/templates/bulk-import', authorize('admin', 'designer'), templateController.bulkCreateTemplates);
 
 // --- THÊM MỚI: Gắn các route quản lý trang vào đây ---
 router.use('/pages', authorize('admin', 'marketing'), upload.any(), pageRoutes);
