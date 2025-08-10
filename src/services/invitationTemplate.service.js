@@ -41,6 +41,7 @@ const getUniqueCategories = async () => {
 const getUniqueTypesForCategory = async (category) => {
   return await InvitationTemplate.distinct('type', { category: category });
 };
+
 // ++ KẾT THÚC THÊM MỚI ++
 
 const getUniqueGroups = async () => {
@@ -83,7 +84,7 @@ module.exports = {
   updateTemplateById,
   deleteTemplateById,
   getUniqueCategories,
-  getUniqueTypesForCategory: getUniqueTypesForCategoryAndGroup, // Ta sẽ dùng hàm mới cho cả hai trường hợp
+  getUniqueTypesForCategory, // Ta sẽ dùng hàm mới cho cả hai trường hợp
   bulkCreateTemplates,
   incrementTemplateView,
   getUniqueGroups: async () => await InvitationTemplate.distinct('group').where('group').ne(null).ne(''),

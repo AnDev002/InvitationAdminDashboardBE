@@ -29,8 +29,9 @@ const getInvitationTemplates = async (req, res, next) => {
 const getTemplateGroups = async (req, res, next) => {
     try {
         const { category } = req.query;
+        // Nếu không có category, trả về mảng rỗng thay vì lỗi, để frontend xử lý dễ hơn
         if (!category) {
-            return res.status(400).json({ message: 'Cần có Category.' });
+            return res.status(200).json({ status: 'success', data: [] });
         }
         const groups = await invitationTemplateService.getUniqueGroupsForCategory(category);
         res.status(200).json({
@@ -41,6 +42,7 @@ const getTemplateGroups = async (req, res, next) => {
         next(error);
     }
 };
+
 
 
 const getTemplateById = async (req, res, next) => {
@@ -146,10 +148,14 @@ const getTemplateCategories = async (req, res, next) => {
 const getTemplateTypesForCategory = async (req, res, next) => {
     try {
         const { category, group } = req.query;
-        if (!category || !group) {
-            return res.status(400).json({ message: 'Cần có Category và Group.' });
+        let types = [];
+        // Chỉ fetch khi có đủ thông tin cần thiết
+        if (category && group) {
+            types = await invitationTemplateService.getUniqueTypesForCategoryAndGroup(category, group);
+        } else if (category) {
+            types = await invitationTemplateService.getUniqueTypesForCategory(category);
         }
-        const types = await invitationTemplateService.getUniqueTypesForCategoryAndGroup(category, group);
+        
         res.status(200).json({
             status: 'success',
             data: types,
@@ -158,6 +164,7 @@ const getTemplateTypesForCategory = async (req, res, next) => {
         next(error);
     }
 };
+
 
 // ++ KẾT THÚC THÊM MỚI ++
 
