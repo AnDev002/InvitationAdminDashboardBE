@@ -47,6 +47,21 @@ const getUniqueGroups = async () => {
   return await InvitationTemplate.distinct('group').where('group').ne(null).ne('');
 };
 
+const getUniqueGroupsForCategory = async (category) => {
+  return await InvitationTemplate.distinct('group', { category: category }).where('group').ne(null).ne('');
+};
+
+/**
+ * ++ HÀM MỚI ++
+ * Lấy danh sách các 'type' duy nhất cho một category và group cụ thể.
+ * @param {string} category - Tên của category.
+ * @param {string} group - Tên của group.
+ * @returns {Promise<Array<string>>}
+ */
+const getUniqueTypesForCategoryAndGroup = async (category, group) => {
+  return await InvitationTemplate.distinct('type', { category: category, group: group }).where('type').ne(null).ne('');
+};
+
 const bulkCreateTemplates = async (templates) => {
   // `ordered: false` cho phép tiếp tục insert các bản ghi hợp lệ khác dù có lỗi (vd: trùng title)
   // `rawResult: true` để có kết quả chi tiết
@@ -60,6 +75,7 @@ const bulkCreateTemplates = async (templates) => {
 const incrementTemplateView = async (templateId) => {
   return await InvitationTemplate.findByIdAndUpdate(templateId, { $inc: { views: 1 } });
 };
+
 module.exports = {
   queryInvitationTemplates,
   getTemplateById,
@@ -67,8 +83,10 @@ module.exports = {
   updateTemplateById,
   deleteTemplateById,
   getUniqueCategories,
-  getUniqueTypesForCategory, // ++ THÊM MỚI ++
+  getUniqueTypesForCategory: getUniqueTypesForCategoryAndGroup, // Ta sẽ dùng hàm mới cho cả hai trường hợp
   bulkCreateTemplates,
   incrementTemplateView,
-  getUniqueGroups,
+  getUniqueGroups: async () => await InvitationTemplate.distinct('group').where('group').ne(null).ne(''),
+  getUniqueGroupsForCategory, // Export hàm mới
+  getUniqueTypesForCategoryAndGroup, // Export hàm mới
 };
