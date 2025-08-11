@@ -1,3 +1,4 @@
+// TrainData/AdminBE/services/designAsset.service.js
 const DesignAsset = require('../models/designAsset.model');
 const { deleteFileFromR2 } = require('./r2.service'); 
 
@@ -43,6 +44,23 @@ const deleteAssetById = async (assetId) => {
     await DesignAsset.findByIdAndDelete(assetId);
 };
 
+// ++ BẮT ĐẦU THÊM MỚI ++
+/**
+ * [HÀM MỚI]
+ * Tạo nhiều tài sản thiết kế cùng lúc.
+ * @param {Array<object>} assetsData - Mảng các đối tượng dữ liệu tài sản.
+ * @returns {Promise<Array<Document>>}
+ */
+const bulkCreateAssets = async (assetsData) => {
+    if (!assetsData || assetsData.length === 0) {
+        return [];
+    }
+    // insertMany hiệu quả hơn cho việc chèn nhiều document
+    return await DesignAsset.insertMany(assetsData);
+};
+// ++ KẾT THÚC THÊM MỚI ++
+
+
 // Bạn cũng có thể thêm hàm seed dữ liệu ở đây, tương tự như seedTemplates
 const seedAssets = async () => {
     const assets = [
@@ -72,4 +90,5 @@ module.exports = {
     createAsset, 
     deleteAssetById, 
     seedAssets, // Export để có thể gọi từ một route admin nào đó
+    bulkCreateAssets, // ++ THÊM MỚI ++
 };
