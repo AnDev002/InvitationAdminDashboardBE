@@ -2,7 +2,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { getDesignAssets, createDesignAsset, deleteDesignAsset, seedInitialAssets, bulkCreateAssets } = require('../controllers/designAsset.controller');
+const { getDesignAssets, createDesignAsset, deleteDesignAsset, seedInitialAssets, bulkCreateAssets, bulkDeleteAssets } = require('../controllers/designAsset.controller');
 const { protect, authorize } = require('../middleware/auth.middleware');
 const { upload, resizeImage, uploadImageToR2 } = require('../middleware/upload.middleware');
 
@@ -18,7 +18,6 @@ router.post(
     createDesignAsset
 );
 
-// ++ BẮT ĐẦU THÊM MỚI ++
 // Route để xử lý upload hàng loạt
 router.post(
     '/bulk-import',
@@ -27,7 +26,13 @@ router.post(
     upload.array('images', 50), // Cho phép tải lên tối đa 50 ảnh cùng lúc
     bulkCreateAssets
 );
-// ++ KẾT THÚC THÊM MỚI ++
+
+router.delete(
+    '/bulk-delete',
+    protect,
+    authorize('admin'),
+    bulkDeleteAssets
+);
 
 router.delete('/:id', protect, authorize('admin'), deleteDesignAsset);
 

@@ -85,10 +85,35 @@ const seedAssets = async () => {
     await DesignAsset.deleteMany({});
     await DesignAsset.insertMany(assets);
 };
+const bulkDeleteAssetsByIds = async (assetIds) => {
+    if (!assetIds || assetIds.length === 0) {
+        return { deletedCount: 0 };
+    }
+
+    // 1. Tìm tất cả các tài sản để lấy URL ảnh và xóa chúng trên R2
+    const assetsToDelete = await DesignAsset.find({ _id: { $in: assetIds } });
+    
+    const deletePromises = assetsToDelete.map(asset => {
+        if (asset.imgSrc) {
+            const fileKey = asset.imgSrc.split('/').pop();
+            if (fileKey) {
+                return deleteFileFromR2(fileKey);
+            }
+        }
+        return Promise.resolve();
+    });
+
+    await Promise.all(deletePromises);
+
+    // 2. Xóa tất cả các document trong DB bằng một câu lệnh
+    const result = await DesignAsset.deleteMany({ _id: { $in: assetIds } });
+    return result;
+};
 module.exports = {
     getAssetsByType,
     createAsset, 
     deleteAssetById, 
     seedAssets, // Export để có thể gọi từ một route admin nào đó
-    bulkCreateAssets, // ++ THÊM MỚI ++
+    bulkCreateAssets, 
+    bulkDeleteAssetsByIds,
 };

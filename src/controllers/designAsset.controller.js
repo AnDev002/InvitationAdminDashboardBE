@@ -116,10 +116,29 @@ const seedInitialAssets = async (req, res, next) => {
     }
 };
 
+const bulkDeleteAssets = async (req, res, next) => {
+    try {
+        const { ids } = req.body;
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ message: 'Vui lòng cung cấp một danh sách ID hợp lệ.' });
+        }
+
+        const result = await designAssetService.bulkDeleteAssetsByIds(ids);
+
+        res.status(200).json({
+            status: 'success',
+            message: `Đã xóa thành công ${result.deletedCount} tài sản.`
+        });
+    } catch (error) {
+        console.error("Lỗi khi xóa hàng loạt tài sản:", error);
+        next(error);
+    }
+};
 module.exports = {
     getDesignAssets,
     createDesignAsset,
     deleteDesignAsset, 
     seedInitialAssets,
-    bulkCreateAssets, // ++ THÊM MỚI ++
+    bulkCreateAssets,
+    bulkDeleteAssets,
 };
