@@ -83,4 +83,5 @@ router.use('/pages', authorize('admin', 'marketing'), upload.any(), pageRoutes);
 router.get('/settings', authorize('admin', 'marketing'), adminController.getSettings);
 router.put('/settings', authorize('admin', 'marketing'), upload.any(), adminController.updateSettings);
 
+
 module.exports = router;
