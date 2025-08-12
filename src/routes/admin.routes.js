@@ -77,7 +77,7 @@ router.put('/templates/:id', authorize('admin', 'designer'), upload.single('imag
 router.delete('/templates/:id', authorize('admin', 'designer'), templateController.deleteTemplate);
 
 // --- THÊM MỚI: Gắn các route quản lý trang vào đây ---
-router.use('/pages', authorize('admin', 'marketing'), upload.any(), pageRoutes);
+router.use('/pages', authorize('admin', 'marketing'), pageRoutes);
 
 // === Settings & SEO ===
 router.get('/settings', authorize('admin', 'marketing'), adminController.getSettings);
