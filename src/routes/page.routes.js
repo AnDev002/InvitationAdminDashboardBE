@@ -7,8 +7,14 @@ const { uploadFileToR2 } = require('../services/r2.service');
 const sharp = require('sharp');
 
 // Các route này đã được bảo vệ bởi admin middleware ở file index
-router.route('/').get(pageController.getPages).post(pageController.createPage);
-router.route('/:id').get(pageController.getPage).put(pageController.updatePage).delete(pageController.deletePage);
+router.route('/')
+    .get(pageController.getPages)
+    .post(upload.any(), pageController.createPage);
+
+router.route('/:id')
+    .get(pageController.getPage)
+    .put(upload.any(), pageController.updatePage) 
+    .delete(pageController.deletePage);
 
 router.post(
     // URL sẽ là: /api/v1/admin/pages/upload-image
