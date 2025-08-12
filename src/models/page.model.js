@@ -1,24 +1,6 @@
 // TrainData/AdminBE/models/page.model.js
 const mongoose = require('mongoose');
 
-// ++ MỚI: Schema cho các khối nội dung
-const contentBlockSchema = new mongoose.Schema({
-    type: {
-        type: String,
-        required: true,
-        enum: ['text', 'image'],
-    },
-    content: { // Sẽ chứa text hoặc URL ảnh
-        type: String,
-        required: true,
-    },
-    alt: { 
-        type: String 
-    },
-    // Bạn có thể thêm các thuộc tính khác sau này, vd: caption cho ảnh
-}, { _id: true });
-
-
 const pageSchema = new mongoose.Schema({
     title: {
         type: String,
@@ -32,10 +14,10 @@ const pageSchema = new mongoose.Schema({
         trim: true,
         lowercase: true,
     },
-    // ++ THAY ĐỔI: Sử dụng content schema mới
+    // --- THAY ĐỔI: Chuyển content thành một chuỗi duy nhất ---
     content: {
-        type: [contentBlockSchema],
-        default: [],
+        type: String,
+        default: '',
     },
     seo: {
         metaTitle: { type: String, trim: true },
@@ -54,8 +36,11 @@ const pageSchema = new mongoose.Schema({
 
 // Tự động tạo slug từ title nếu slug không được cung cấp
 pageSchema.pre('save', function(next) {
-    if (!this.slug) {
-        this.slug = this.title.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+    if (!this.isModified('slug') && this.title) {
+        this.slug = this.title.toLowerCase()
+            .replace(/[^\w\s-]/g, '') // remove non-word chars
+            .replace(/[\s_-]+/g, '-') // collapse whitespace and replace by -
+            .replace(/^-+|-+$/g, ''); // remove leading/trailing dashes
     }
     next();
 });

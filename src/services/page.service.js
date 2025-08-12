@@ -1,22 +1,62 @@
-// TrainData/AdminBE/services/page.service.js
-const Page = require('../models/page.model');
+// TrainData/AdminBE/controllers/page.controller.js
+const pageService = require('../services/page.service');
 
-// Các hàm này giờ đây sẽ nhận và lưu trữ 'pageData' với trường 'content' là một mảng.
-// Mongoose sẽ tự động xử lý việc lưu trữ cấu trúc mảng này.
-// Không cần thay đổi gì ở đây.
+// Controller giờ đây đơn giản hơn, chỉ cần nhận và lưu dữ liệu.
+// Việc xử lý upload ảnh sẽ được thực hiện bởi CKEditor và một route riêng nếu cần.
 
-const getAllPages = () => Page.find().sort({ createdAt: -1 });
-const getPageById = (id) => Page.findById(id);
-const getPageBySlug = (slug) => Page.findOne({ slug, isPublished: true });
-const createPage = (pageData) => Page.create(pageData);
-const updatePage = (id, pageData) => Page.findByIdAndUpdate(id, pageData, { new: true, runValidators: true });
-const deletePage = (id) => Page.findByIdAndDelete(id);
+exports.getPages = async (req, res, next) => {
+    try {
+        const pages = await pageService.getAllPages();
+        res.status(200).json({ status: 'success', data: pages });
+    } catch (error) { next(error); }
+};
 
-module.exports = {
-    getAllPages,
-    getPageById,
-    getPageBySlug,
-    createPage,
-    updatePage,
-    deletePage,
+exports.getPage = async (req, res, next) => {
+    try {
+        const page = await pageService.getPageById(req.params.id);
+        if (!page) return res.status(404).json({ message: 'Không tìm thấy trang' });
+        res.status(200).json({ status: 'success', data: page });
+    } catch (error) { next(error); }
+};
+
+exports.createPage = async (req, res, next) => {
+    try {
+        if (!req.user || !req.user.id) {
+            return res.status(401).json({ message: 'Xác thực không thành công.' });
+        }
+        
+        // Dữ liệu giờ là một object JSON đơn giản
+        const pageData = { ...req.body, author: req.user.id };
+
+        const newPage = await pageService.createPage(pageData);
+        res.status(201).json({ status: 'success', data: newPage });
+    } catch (error) {
+        if (error.code === 11000) {
+            return res.status(409).json({ message: 'Lỗi: Đường dẫn (slug) này đã tồn tại.' });
+        }
+        next(error);
+    }
+};
+
+exports.updatePage = async (req, res, next) => {
+    try {
+        const pageData = { ...req.body };
+        
+        const updatedPage = await pageService.updatePage(req.params.id, pageData);
+        if (!updatedPage) return res.status(404).json({ message: 'Không tìm thấy trang' });
+        res.status(200).json({ status: 'success', data: updatedPage });
+    } catch (error) { 
+        if (error.code === 11000) {
+            return res.status(409).json({ message: 'Lỗi: Đường dẫn (slug) này đã tồn tại.' });
+        }
+        next(error); 
+    }
+};
+
+exports.deletePage = async (req, res, next) => {
+    try {
+        const page = await pageService.deletePage(req.params.id);
+        if (!page) return res.status(404).json({ message: 'Không tìm thấy trang' });
+        res.status(204).send();
+    } catch (error) { next(error); }
 };
