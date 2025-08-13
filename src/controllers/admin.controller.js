@@ -50,11 +50,9 @@ exports.updateSettings = async (req, res, next) => {
                 // Tải file (đã xử lý hoặc file GIF gốc) lên R2
                 const { url } = await uploadFileToR2(fileBuffer, fileMimeType);
                 
-                const parts = file.fieldname.split('_');
-                const group = parts.shift();
-                const property = parts.pop();
-                const key = parts.join('_');
-                const path = `${group}.${key}.${property}`;
+                // ++ NÂNG CẤP LOGIC: Xử lý các fieldname phức tạp hơn
+                // Ví dụ: 'theme_logoUrl' hoặc 'footer_socialLinks_0_iconSrc'
+                const path = file.fieldname.replace(/_/g, '.'); // Chuyển đổi thành 'theme.logoUrl' hoặc 'footer.socialLinks.0.iconSrc'
                 
                 _.set(settingsData, path, url);
             });
