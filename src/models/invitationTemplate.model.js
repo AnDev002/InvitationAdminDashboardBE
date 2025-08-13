@@ -9,6 +9,14 @@ const invitationTemplateSchema = new mongoose.Schema({
     description: { type: String, default: '' },
     templateData: { type: mongoose.Schema.Types.Mixed },
     views: { type: Number, default: 0 },
+    displayOrder: { 
+        type: Number, 
+        default: 0 
+    },
+    isActive: { 
+        type: Boolean, 
+        default: true 
+    },
 });
 
 const InvitationTemplate = mongoose.model('InvitationTemplate', invitationTemplateSchema);

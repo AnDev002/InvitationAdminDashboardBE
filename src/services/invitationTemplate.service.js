@@ -1,7 +1,7 @@
 const InvitationTemplate = require('../models/invitationTemplate.model');
 
 const queryInvitationTemplates = (filter) => {
-  return InvitationTemplate.find(filter);
+  return InvitationTemplate.find({ ...filter, isActive: true }).sort({ displayOrder: 1, createdAt: -1 });
 };
 
 // HÀM MỚI
@@ -76,6 +76,7 @@ const bulkCreateTemplates = async (templates) => {
 const incrementTemplateView = async (templateId) => {
   return await InvitationTemplate.findByIdAndUpdate(templateId, { $inc: { views: 1 } });
 };
+
 
 module.exports = {
   queryInvitationTemplates,

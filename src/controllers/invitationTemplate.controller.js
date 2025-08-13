@@ -122,6 +122,10 @@ const updateTemplate = async (req, res, next) => {
         // THÊM: Xử lý nội dung mô tả để tìm và upload ảnh
         updateData.description = await processContentImages(req.body.description);
 
+        if (req.body.displayOrder) {
+            updateData.displayOrder = req.body.displayOrder;
+        }
+
         const updatedTemplate = await invitationTemplateService.updateTemplateById(
             req.params.id,
             updateData
