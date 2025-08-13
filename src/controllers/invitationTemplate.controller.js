@@ -2,6 +2,29 @@ const mongoose = require('mongoose');
 const InvitationTemplate = require('../models/invitationTemplate.model');
 const invitationTemplateService = require('../services/invitationTemplate.service');
 const APIFeatures = require('../utils/apiFeature');
+const sharp = require('sharp');
+const { uploadFileToR2 } = require('../services/r2.service');
+
+const processContentImages = async (htmlContent) => {
+    // Regex để tìm các ảnh base64 hoặc placeholder trong nội dung
+    const regex = /<img[^>]+src="data:image\/[^;]+;base64[^>]+"/g;
+    const matches = htmlContent.match(regex);
+    if (!matches) return htmlContent;
+    
+    let newHtmlContent = htmlContent;
+    for (const imgTag of matches) {
+        const base64Data = imgTag.match(/src="data:image\/[^;]+;base64,([^"]+)"/)[1];
+        const buffer = Buffer.from(base64Data, 'base64');
+        const processedBuffer = await sharp(buffer)
+            .resize({ width: 1200, fit: 'inside', withoutEnlargement: true })
+            .webp({ quality: 80 })
+            .toBuffer();
+        
+        const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
+        newHtmlContent = newHtmlContent.replace(imgTag, `<img src="${url}" />`);
+    }
+    return newHtmlContent;
+};
 
 const getInvitationTemplates = async (req, res, next) => {
     try {
@@ -60,29 +83,27 @@ const getTemplateById = async (req, res, next) => {
     }
 };
 
-// HÀM MỚI
 const createTemplate = async (req, res, next) => {
     try {
-        // Dữ liệu từ FormData sẽ là dạng chuỗi, cần parse lại
         const parsedTemplateData = JSON.parse(req.body.templateData);
-
         const newTemplatePayload = {
-            ...req.body, // Lấy title, category, type, description...
-            templateData: parsedTemplateData, // Gán lại templateData đã được parse
+            ...req.body,
+            templateData: parsedTemplateData,
         };
 
-        // Gán đường dẫn ảnh từ middleware sau khi upload thành công
         if (req.file && req.file.r2Url) {
             newTemplatePayload.imgSrc = req.file.r2Url;
-        } else if (!req.body.id) { // Chỉ yêu cầu ảnh khi tạo mới
-            // Nếu không có file và đang tạo mới, trả về lỗi 400
+        } else if (!req.body.id) {
             return res.status(400).json({ message: 'Ảnh đại diện là bắt buộc khi tạo mẫu mới.' });
         }
+        
+        // THÊM: Xử lý nội dung mô tả để tìm và upload ảnh
+        newTemplatePayload.description = await processContentImages(req.body.description);
 
         const newTemplate = await invitationTemplateService.createTemplate(newTemplatePayload);
         res.status(201).json({ status: 'success', data: newTemplate });
     } catch (error) {
-        console.error("Error Body:", req.body); // Log lại để kiểm tra lỗi
+        console.error("Error Body:", req.body);
         next(error);
     }
 };
@@ -90,21 +111,21 @@ const createTemplate = async (req, res, next) => {
 const updateTemplate = async (req, res, next) => {
     try {
         const parsedTemplateData = JSON.parse(req.body.templateData);
-
         const updateData = {
             ...req.body,
             templateData: parsedTemplateData,
         };
-
         if (req.file && req.file.r2Url) {
             updateData.imgSrc = req.file.r2Url;
         }
+        
+        // THÊM: Xử lý nội dung mô tả để tìm và upload ảnh
+        updateData.description = await processContentImages(req.body.description);
 
         const updatedTemplate = await invitationTemplateService.updateTemplateById(
             req.params.id,
             updateData
         );
-
         if (!updatedTemplate) {
             return res.status(404).json({ message: 'Không tìm thấy mẫu thiệp.' });
         }

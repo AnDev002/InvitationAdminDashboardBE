@@ -3,6 +3,27 @@ const APIFeatures = require('../utils/apiFeature');
 const sharp = require('sharp');
 const { uploadFileToR2 } = require('../services/r2.service');
 
+const processContentImages = async (htmlContent) => {
+    // Regex để tìm các ảnh base64 hoặc placeholder trong nội dung
+    const regex = /<img[^>]+src="data:image\/[^;]+;base64[^>]+"/g;
+    const matches = htmlContent.match(regex);
+    if (!matches) return htmlContent;
+    
+    let newHtmlContent = htmlContent;
+    for (const imgTag of matches) {
+        const base64Data = imgTag.match(/src="data:image\/[^;]+;base64,([^"]+)"/)[1];
+        const buffer = Buffer.from(base64Data, 'base64');
+        const processedBuffer = await sharp(buffer)
+            .resize({ width: 1200, fit: 'inside', withoutEnlargement: true })
+            .webp({ quality: 80 })
+            .toBuffer();
+        
+        const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
+        newHtmlContent = newHtmlContent.replace(imgTag, `<img src="${url}" />`);
+    }
+    return newHtmlContent;
+};
+
 const processAndUploadFile = async (file) => {
     const buffer = await sharp(file.buffer)
         .resize({ width: 800, fit: 'inside', withoutEnlargement: true })
@@ -12,7 +33,6 @@ const processAndUploadFile = async (file) => {
     return url;
 };
 
-// Tạo sản phẩm mới
 const createProduct = async (req, res, next) => {
     try {
         const productData = { ...req.body };
@@ -22,7 +42,7 @@ const createProduct = async (req, res, next) => {
         if (req.files && req.files.image && req.files.image[0]) {
             const mainImageUrl = await processAndUploadFile(req.files.image[0]);
             productData.imgSrc = mainImageUrl;
-            newImageUrls.push(mainImageUrl); // Ảnh đại diện cũng là một ảnh trong thư viện
+            newImageUrls.push(mainImageUrl);
         }
 
         // Xử lý các ảnh trong thư viện
@@ -33,6 +53,10 @@ const createProduct = async (req, res, next) => {
         }
 
         productData.images = newImageUrls;
+        
+        // THÊM: Xử lý nội dung mô tả để tìm và upload ảnh
+        productData.description = await processContentImages(productData.description);
+
         const newProduct = await productService.createProduct(productData);
         res.status(201).json(newProduct);
     } catch (error) {
@@ -91,7 +115,6 @@ const getProductById = async (req, res, next) => {
   }
 };
 
-// Cập nhật sản phẩm - ĐÃ SỬA LỖI
 const updateProduct = async (req, res, next) => {
     try {
         const updateData = { ...req.body };
@@ -106,9 +129,8 @@ const updateProduct = async (req, res, next) => {
         if (req.files && req.files.image && req.files.image[0]) {
             const mainImageUrl = await processAndUploadFile(req.files.image[0]);
             updateData.imgSrc = mainImageUrl;
-            // Thay thế ảnh đại diện cũ trong danh sách hoặc thêm mới
             if (!finalImageUrls.includes(mainImageUrl)) {
-                 finalImageUrls.unshift(mainImageUrl); // Thêm vào đầu
+                 finalImageUrls.unshift(mainImageUrl);
             }
         }
 
@@ -121,6 +143,9 @@ const updateProduct = async (req, res, next) => {
 
         updateData.images = finalImageUrls;
 
+        // THÊM: Xử lý nội dung mô tả để tìm và upload ảnh
+        updateData.description = await processContentImages(updateData.description);
+        
         const product = await productService.updateProductById(req.params.id, updateData);
         if (!product) {
             return res.status(404).json({ message: 'Product not found' });
