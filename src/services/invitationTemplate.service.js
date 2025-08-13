@@ -1,7 +1,7 @@
 const InvitationTemplate = require('../models/invitationTemplate.model');
 
 const queryInvitationTemplates = (filter) => {
-  return InvitationTemplate.find({ ...filter, isActive: true }).sort({ displayOrder: 1, createdAt: -1 });
+  return InvitationTemplate.find({ ...filter }).sort({ displayOrder: 1, createdAt: -1 });
 };
 
 // HÀM MỚI
