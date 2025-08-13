@@ -44,13 +44,30 @@ app.use('/api/v1/public', publicRoutes);
 app.use('/api/v1/pages', pageRoutes);
 app.use(errorHandler);
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log("Connect Db success!")
-  })
-  .catch((err) => {
-    console.log(err)
-  })
+  .then(async () => { // Thêm async vào đây
+    console.log("Connect Db success!");
 
-app.listen(port, () => {
-  console.log("Server is running in port: " + port);
-});
+    try {
+      // Cập nhật tất cả các mẫu thiệp không có trường 'isActive'
+      const result = await InvitationTemplate.updateMany(
+        { isActive: { $exists: false } },
+        { $set: { isActive: true, displayOrder: 0 } }
+      );
+      console.log(`Đã cập nhật ${result.modifiedCount} mẫu thiệp cũ, set isActive = true và displayOrder = 0.`);
+    } catch (error) {
+      console.error("Lỗi khi cập nhật isActive cho các mẫu thiệp cũ:", error);
+    }
+
+    app.listen(port, () => {
+      console.log("Server is running in port: " + port);
+    });
+  })
+  .catch((err) => {
+    console.log(err);
+  });
+
+
+
+
+
+
