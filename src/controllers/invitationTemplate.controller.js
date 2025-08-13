@@ -242,6 +242,19 @@ const incrementView = async (req, res, next) => {
   }
 };
 
+const reorderTemplates = async (req, res) => {
+    try {
+        const { templateIds } = req.body;
+        if (!Array.isArray(templateIds) || templateIds.length === 0) {
+            return res.status(400).json({ message: 'Danh sách ID thiệp không hợp lệ' });
+        }
+        await invitationTemplateService.reorderTemplates(templateIds);
+        res.status(200).json({ message: 'Cập nhật thứ tự thành công' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getInvitationTemplates,
     getTemplateById,
@@ -254,4 +267,5 @@ module.exports = {
     bulkCreateTemplates,
     incrementView,
     getTemplateGroups,
+    reorderTemplates
 };

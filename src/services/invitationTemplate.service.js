@@ -77,6 +77,15 @@ const incrementTemplateView = async (templateId) => {
   return await InvitationTemplate.findByIdAndUpdate(templateId, { $inc: { views: 1 } });
 };
 
+const reorderTemplates = async (templateIds) => {
+  const bulkOps = templateIds.map((id, index) => ({
+    updateOne: {
+      filter: { _id: id },
+      update: { $set: { displayOrder: index + 1 } },
+    },
+  }));
+  return await InvitationTemplate.bulkWrite(bulkOps);
+};
 
 module.exports = {
   queryInvitationTemplates,
@@ -91,4 +100,5 @@ module.exports = {
   getUniqueGroups: async () => await InvitationTemplate.distinct('group').where('group').ne(null).ne(''),
   getUniqueGroupsForCategory, // Export hàm mới
   getUniqueTypesForCategoryAndGroup, // Export hàm mới
+  reorderTemplates,
 };

@@ -6,5 +6,6 @@ const invitationTemplateController = require('../controllers/invitationTemplate.
 router.get('/', getInvitationTemplates);
 router.post('/seed', seedTemplates);
 router.get('/:id', getTemplateById);
+router.post('/reorder', invitationTemplateController.reorderTemplates);
 router.post('/:id/view', invitationTemplateController.incrementView);
 module.exports = router;
