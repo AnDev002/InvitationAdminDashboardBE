@@ -31,35 +31,37 @@ exports.updateSettings = async (req, res, next) => {
     try {
         const settingsData = JSON.parse(req.body.settings || '{}');
 
+        // Logic xử lý file được tải lên
         if (req.files && req.files.length > 0) {
             const uploadPromises = req.files.map(async (file) => {
                 let fileBuffer = file.buffer;
                 let fileMimeType = file.mimetype;
 
-                // === BẮT ĐẦU THAY ĐỔI TẠI ĐÂY ===
-                // Chỉ xử lý ảnh nếu nó không phải là GIF
+                // Tối ưu hóa ảnh nếu không phải là GIF
                 if (file.mimetype !== 'image/gif') {
                     fileBuffer = await sharp(file.buffer)
                         .resize({ width: 1920, fit: 'inside', withoutEnlargement: true })
                         .webp({ quality: 85 })
                         .toBuffer();
-                    fileMimeType = 'image/webp'; // Cập nhật lại mimetype sau khi chuyển đổi
+                    fileMimeType = 'image/webp';
                 }
-                // === KẾT THÚC THAY ĐỔI ===
 
-                // Tải file (đã xử lý hoặc file GIF gốc) lên R2
+                // Tải file đã xử lý lên R2
                 const { url } = await uploadFileToR2(fileBuffer, fileMimeType);
                 
-                // ++ NÂNG CẤP LOGIC: Xử lý các fieldname phức tạp hơn
-                // Ví dụ: 'theme_logoUrl' hoặc 'footer_socialLinks_0_iconSrc'
-                const path = file.fieldname.replace(/_/g, '.'); // Chuyển đổi thành 'theme.logoUrl' hoặc 'footer.socialLinks.0.iconSrc'
+                // Chuyển đổi fieldname từ 'theme_logoUrl' thành đường dẫn 'theme.logoUrl'
+                const path = file.fieldname.replace(/_/g, '.');
                 
+                // **ĐIỂM QUAN TRỌNG:** Ghi đè URL mới trực tiếp vào đối tượng settingsData
+                // Điều này giúp API tự tin hơn và ít phụ thuộc vào frontend.
                 _.set(settingsData, path, url);
             });
 
+            // Chờ tất cả các file được tải lên xong
             await Promise.all(uploadPromises);
         }
         
+        // Lưu đối tượng settings đã hoàn chỉnh vào cơ sở dữ liệu
         const updatedSettings = await adminService.updateSettings(settingsData);
         
         res.status(200).json({
