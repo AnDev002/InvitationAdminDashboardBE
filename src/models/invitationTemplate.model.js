@@ -11,8 +11,7 @@ const invitationTemplateSchema = new mongoose.Schema({
     views: { type: Number, default: 0 },
     displayOrder: { 
         type: Number, 
-        default: 0,
-        index: true,
+        default: 0 
     },
     isActive: { 
         type: Boolean, 

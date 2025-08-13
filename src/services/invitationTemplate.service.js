@@ -78,14 +78,15 @@ const incrementTemplateView = async (templateId) => {
 };
 
 const reorderTemplates = async (templateIds) => {
-  const bulkOps = templateIds.map((id, index) => ({
-    updateOne: {
-      filter: { _id: id },
-      update: { $set: { displayOrder: index + 1 } },
-    },
-  }));
-  return await InvitationTemplate.bulkWrite(bulkOps);
+    const bulkOps = templateIds.map((id, index) => ({
+        updateOne: {
+            filter: { _id: id },
+            update: { $set: { displayOrder: index + 1 } },
+        },
+    }));
+    return await InvitationTemplate.bulkWrite(bulkOps);
 };
+
 
 module.exports = {
   queryInvitationTemplates,

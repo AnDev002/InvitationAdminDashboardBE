@@ -70,6 +70,7 @@ router.get('/templates/types', authorize('admin', 'designer'), templateControlle
 router.get('/templates/groups', authorize('admin', 'designer'), templateController.getTemplateGroups); // Route này phải nằm ở đây
 router.post('/templates/bulk-import', authorize('admin', 'designer'), templateController.bulkCreateTemplates);
 router.post('/templates', authorize('admin', 'designer'), upload.single('image'), resizeImage, uploadImageToR2, templateController.createTemplate);
+router.post('/templates/reorder', authorize('admin', 'designer'), templateController.reorderTemplates); 
 
 // ROUTE ĐỘNG (KHÁI QUÁT) ĐƯỢC ĐẶT Ở SAU CÙNG
 router.get('/templates/:id', authorize('admin', 'designer'), templateController.getTemplateById); // Route này phải nằm sau các route tĩnh ở trên

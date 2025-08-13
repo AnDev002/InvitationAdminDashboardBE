@@ -242,7 +242,7 @@ const incrementView = async (req, res, next) => {
   }
 };
 
-const reorderTemplates = async (req, res) => {
+const reorderTemplates = async (req, res, next) => {
     try {
         const { templateIds } = req.body;
         if (!Array.isArray(templateIds) || templateIds.length === 0) {
@@ -251,7 +251,7 @@ const reorderTemplates = async (req, res) => {
         await invitationTemplateService.reorderTemplates(templateIds);
         res.status(200).json({ message: 'Cập nhật thứ tự thành công' });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        next(error);
     }
 };
 
