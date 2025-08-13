@@ -6,6 +6,7 @@ const invitationTemplateSchema = new mongoose.Schema({
     type: { type: String, required: true },
     title: { type: String, required: true, unique: true },
     imgSrc: { type: String, required: true },
+    description: { type: String, default: '' },
     templateData: { type: mongoose.Schema.Types.Mixed },
     views: { type: Number, default: 0 },
 });
