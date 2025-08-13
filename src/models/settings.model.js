@@ -8,6 +8,13 @@ const navItemSchema = new mongoose.Schema({
     isVisible: { type: Boolean, default: true }
 }, { _id: false });
 
+const socialLinkSchema = new mongoose.Schema({
+    id: { type: String, required: true },
+    name: { type: String, default: 'Mạng xã hội' },
+    url: { type: String, default: '#' },
+    iconSrc: { type: String } 
+}, { _id: false });
+
 const settingsSchema = new mongoose.Schema({
     singletonKey: { type: String, default: "main_settings", unique: true },
     livePreviewUrl: { type: String, default: "https://baotrithangmay.vn" },
@@ -17,11 +24,14 @@ const settingsSchema = new mongoose.Schema({
         fontFamily: String,
         customFontUrl: String,
         logoUrl: String,
-        announcementBar: { 
-            text: String, 
+        companyName: { type: String, default: 'Công ty TNHH Đầu Tư Phát Triển Kết Nối Thế Giới' },
+        address: { type: String, default: 'Cầu Giấy, Hà Nội, Việt Nam' },
+        phone: { type: String, default: '(+84) 987 235 1645' },
+        announcementBar: {
+            text: String,
             isEnabled: Boolean,
-            backgroundColor: String, 
-            textColor: String,    
+            backgroundColor: String,
+            textColor: String,
             link: String,
             backgroundImage: String
         }
@@ -35,8 +45,11 @@ const settingsSchema = new mongoose.Schema({
         invitations: { imageUrl: String, title: String, subtitle: String },
         shop: { imageUrl: String, title: String, subtitle: String },
     },
-    footer: Object,
-    
+    footer: {
+        columns: { type: mongoose.Schema.Types.Mixed, default: [] }, 
+        socialLinks: { type: [socialLinkSchema], default: [] }
+    },
+
     seo: {
         pages: {
             home: {
