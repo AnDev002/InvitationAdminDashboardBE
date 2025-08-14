@@ -3,6 +3,7 @@ const Template = require('../models/invitationTemplate.model');
 const Setting = require('../models/settings.model');
 const User = require('../models/user.model');
 const Invitation = require('../models/invitation.model');
+const _ = require('lodash');
 
 const getDashboardData = async () => {
     const totalProducts = await Product.countDocuments();
