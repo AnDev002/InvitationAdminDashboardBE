@@ -20,7 +20,7 @@ router.use(protect);
 router.get('/users/me', userController.getMe);
 // ===== BẢO VỆ TẤT CẢ CÁC ROUTE BÊN DƯỚI =====
 // Tất cả các route trong file này đều yêu cầu đăng nhập VÀ phải là admin
-router.use(authorize('admin'));
+// router.use(authorize('admin'));
 // === Dashboard ===
 router.get('/dashboard', adminController.getDashboardData);
 // === User (cho admin xem và thông tin cá nhân của admin) ===
