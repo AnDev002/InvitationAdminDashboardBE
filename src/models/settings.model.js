@@ -10,9 +10,22 @@ const navItemSchema = new mongoose.Schema({
 
 const socialLinkSchema = new mongoose.Schema({
     id: { type: String, required: true },
-    name: { type: String, default: 'Mạng xã hội' },
-    url: { type: String, default: '#' },
-    iconSrc: { type: String } 
+    name: { type: String, required: true },
+    url: { type: String, required: true },
+    icon: { type: String } 
+}, { _id: false });
+
+// Schema cho một liên kết trong cột footer
+const footerLinkSchema = new mongoose.Schema({
+    id: { type: String, required: true },
+    text: { type: String, required: true },
+    url: { type: String, required: true }
+}, { _id: false });
+
+const footerColumnSchema = new mongoose.Schema({
+    id: { type: String, required: true },
+    title: { type: String, required: true },
+    links: [footerLinkSchema]
 }, { _id: false });
 
 const settingsSchema = new mongoose.Schema({
@@ -46,8 +59,8 @@ const settingsSchema = new mongoose.Schema({
         shop: { imageUrl: String, title: String, subtitle: String },
     },
     footer: {
-        columns: { type: mongoose.Schema.Types.Mixed, default: [] }, 
-        socialLinks: { type: [socialLinkSchema], default: [] }
+        socialLinks: [socialLinkSchema],
+        columns: [footerColumnSchema]
     },
 
     seo: {
