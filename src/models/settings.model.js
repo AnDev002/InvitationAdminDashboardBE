@@ -1,3 +1,4 @@
+// AdminBE/models/settings.model.js
 const mongoose = require('mongoose');
 
 const navItemSchema = new mongoose.Schema({
@@ -12,7 +13,7 @@ const socialLinkSchema = new mongoose.Schema({
     id: { type: String, required: true },
     name: { type: String, required: true },
     url: { type: String, required: true },
-    icon: { type: String } 
+    icon: { type: String } // Thêm trường icon
 }, { _id: false });
 
 // Schema cho một liên kết trong cột footer
