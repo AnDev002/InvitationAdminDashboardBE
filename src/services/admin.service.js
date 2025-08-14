@@ -71,13 +71,47 @@ const getSettings = async () => {
 };
 
 
-const updateSettings = async (updateData) => {
-    return await Setting.findOneAndUpdate(
-        { singletonKey: "main_settings" },
-        updateData,
-        { new: true, upsert: true, runValidators: true }
-    );
+const updateSettings = async (settingsData) => {
+    let settings = await Setting.findOne();
+
+    if (!settings) {
+        // If no settings document exists at all, create a new one.
+        settings = new Setting(settingsData);
+    } else {
+        // Settings exist, update them carefully.
+
+        // For plain nested objects (not arrays of documents), merge is safe.
+        settings.theme = _.merge(settings.theme || {}, settingsData.theme);
+        settings.banners = _.merge(settings.banners || {}, settingsData.banners);
+        
+        // For arrays of sub-documents, DIRECTLY REPLACE the array.
+        // This is the key fix. It tells Mongoose to process the new array
+        // from scratch, correctly casting each item and running validators.
+        if (settingsData.footer) {
+            if (settingsData.footer.socialLinks) {
+                settings.footer.socialLinks = settingsData.footer.socialLinks;
+            }
+            if (settingsData.footer.columns) {
+                settings.footer.columns = settingsData.footer.columns;
+            }
+        }
+        
+        if (settingsData.headerNav) {
+            settings.headerNav = settingsData.headerNav;
+        }
+
+        // Mark the footer as modified if it was part of the update.
+        // This can sometimes be necessary to let Mongoose know a mixed-type object has changed.
+        if (settingsData.footer) {
+           settings.markModified('footer');
+        }
+    }
+
+    // Now, save the updated document. Mongoose validation will run here.
+    await settings.save();
+    return settings;
 };
+
 
 module.exports = {
     getDashboardData,
