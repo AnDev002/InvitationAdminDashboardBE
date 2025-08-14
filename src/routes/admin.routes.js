@@ -64,13 +64,13 @@ router.route('/products/:id')
 
 
 // === Template Management ===
-router.get('/templates', authorize('admin', 'designer'), templateController.getInvitationTemplates);
-router.get('/templates/categories', authorize('admin', 'designer'), templateController.getTemplateCategories);
-router.get('/templates/types', authorize('admin', 'designer'), templateController.getTemplateTypesForCategory);
-router.get('/templates/groups', authorize('admin', 'designer'), templateController.getTemplateGroups); // Route này phải nằm ở đây
-router.post('/templates/bulk-import', authorize('admin', 'designer'), templateController.bulkCreateTemplates);
-router.post('/templates', authorize('admin', 'designer'), upload.single('image'), resizeImage, uploadImageToR2, templateController.createTemplate);
-router.post('/templates/reorder', authorize('admin', 'designer'), templateController.reorderTemplates); 
+router.get('/templates', authorize('admin', 'marketing', 'designer'), templateController.getInvitationTemplates);
+router.get('/templates/categories', authorize('admin', 'marketing', 'designer'), templateController.getTemplateCategories);
+router.get('/templates/types', authorize('admin', 'marketing', 'designer'), templateController.getTemplateTypesForCategory);
+router.get('/templates/groups', authorize('admin', 'marketing', 'designer'), templateController.getTemplateGroups); // Route này phải nằm ở đây
+router.post('/templates/bulk-import', authorize('admin', 'marketing', 'designer'), templateController.bulkCreateTemplates);
+router.post('/templates', authorize('admin', 'marketing', 'designer'), upload.single('image'), resizeImage, uploadImageToR2, templateController.createTemplate);
+router.post('/templates/reorder', authorize('admin', 'marketing', 'designer'), templateController.reorderTemplates); 
 
 // ROUTE ĐỘNG (KHÁI QUÁT) ĐƯỢC ĐẶT Ở SAU CÙNG
 router.get('/templates/:id', authorize('admin', 'designer'), templateController.getTemplateById); // Route này phải nằm sau các route tĩnh ở trên
