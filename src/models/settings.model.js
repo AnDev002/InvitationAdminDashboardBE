@@ -47,7 +47,8 @@ const settingsSchema = new mongoose.Schema({
             backgroundColor: String,
             textColor: String,
             link: String,
-            backgroundImage: String
+            backgroundImage: String,
+            isMarquee: { type: Boolean, default: false }
         }
     },
     banners: {
