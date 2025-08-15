@@ -136,10 +136,12 @@ const deleteInvitationTaxonomy = async (taxonomyType, name) => {
 /**
  * Lấy cấu trúc menu điều hướng (header).
  */
+
 const getNavigation = async () => {
     const settings = await getSettings();
     return settings.headerNav || [];
 };
+
 
 /**
  * Cập nhật cấu trúc menu điều hướng (header).
@@ -177,6 +179,7 @@ const updateGroupOrderInCategory = async (categoryName, orderedGroups) => {
 
 
 
+
 module.exports = {
     getDashboardData,
     getSettings,
@@ -186,5 +189,5 @@ module.exports = {
     deleteInvitationTaxonomy,
     getNavigation,
     updateNavigation,
-    updateGroupOrderInCategory
+    updateGroupOrderInCategory,
 };
