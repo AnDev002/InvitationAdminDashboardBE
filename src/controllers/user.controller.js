@@ -1,6 +1,6 @@
 const userService = require('../services/user.service');
 const { deleteFileFromR2 } = require('../services/r2.service.js');
-const AppError = require('../../utils/AppError');
+const AppError = require('../utils/AppError');
 
 const getUsers = async (req, res, next) => {
   try {

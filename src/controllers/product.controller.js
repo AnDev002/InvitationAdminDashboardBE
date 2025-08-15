@@ -2,7 +2,7 @@ const productService = require('../services/product.service');
 const APIFeatures = require('../utils/apiFeature');
 const sharp = require('sharp');
 const { uploadFileToR2 } = require('../services/r2.service');
-const AppError = require('../../utils/AppError');
+const AppError = require('../utils/AppError');
 
 const processContentImages = async (htmlContent) => {
     // Regex để tìm các ảnh base64 hoặc placeholder trong nội dung

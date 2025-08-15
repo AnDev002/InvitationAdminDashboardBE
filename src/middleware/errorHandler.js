@@ -1,5 +1,5 @@
 // AdminBE/middleware/errorHandler.js
-const AppError = require('../../utils/AppError');
+const AppError = require('../utils/AppError');
 
 // Gửi lỗi chi tiết khi ở môi trường development
 const sendErrorDev = (err, res) => {
