@@ -91,10 +91,11 @@ router.post('/taxonomies/add', authorize('admin', 'marketing'), adminController.
 router.post('/taxonomies/delete', authorize('admin', 'marketing'), adminController.deleteInvitationTaxonomy);
 router.put('/taxonomies/reorder-groups', authorize('admin', 'marketing'), adminController.updateGroupOrder);
 
+// Quản lý Điều hướng (Header Menu)
+router.route('/navigation')
+    .get(authorize('admin', 'marketing'), adminController.getNavigation)
+    .put(authorize('admin', 'marketing'), adminController.updateNavigation);
 
-// Quản lý cấu trúc cây Điều hướng (Header Menu)
-router.route('/taxonomies/tree') // SỬA ĐỔI: Đổi /navigation thành /taxonomies/tree
-    .get(authorize('admin', 'marketing'), adminController.getTaxonomyTree) // SỬA ĐỔI
-    .put(authorize('admin', 'marketing'), adminController.saveTaxonomyTree); // SỬA ĐỔI
+
 
 module.exports = router;

@@ -300,6 +300,5 @@ module.exports = {
     deleteInvitationTaxonomy,
     getNavigation,
     updateNavigation,
-    updateGroupOrderInCategory,
-    addInvitationTaxonomy
+    updateGroupOrderInCategory
 };
