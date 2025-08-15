@@ -153,6 +153,23 @@ const updateNavigation = async (navData) => {
     );
     return settings.headerNav;
 };
+const updateGroupOrderInCategory = async (categoryName, orderedGroups) => {
+    const settings = await getSettings(); // Dùng lại hàm getSettings để đảm bảo có document
+    
+    // Khởi tạo đối tượng groupOrder nếu chưa có
+    if (!settings.seo.groupOrder) {
+        settings.seo.groupOrder = {};
+    }
+
+    // Gán mảng thứ tự mới cho danh mục tương ứng
+    settings.seo.groupOrder[categoryName] = orderedGroups;
+
+    // Đánh dấu trường đã bị thay đổi để Mongoose biết cần phải lưu
+    settings.markModified('seo.groupOrder');
+    
+    await settings.save();
+    return settings.seo.groupOrder;
+};
 
 module.exports = {
     getDashboardData,
@@ -162,5 +179,6 @@ module.exports = {
     updateInvitationTaxonomy,
     deleteInvitationTaxonomy,
     getNavigation,
-    updateNavigation
+    updateNavigation,
+    updateGroupOrderInCategory
 };

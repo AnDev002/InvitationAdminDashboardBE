@@ -129,3 +129,22 @@ exports.updateNavigation = async (req, res, next) => {
         next(error);
     }
 };
+
+exports.updateGroupOrder = async (req, res, next) => {
+    try {
+        const { categoryName, orderedGroups } = req.body;
+        if (!categoryName || !Array.isArray(orderedGroups)) {
+            return res.status(400).json({ message: 'Dữ liệu không hợp lệ.' });
+        }
+
+        const result = await adminService.updateGroupOrderInCategory(categoryName, orderedGroups);
+        
+        res.status(200).json({
+            status: 'success',
+            message: `Đã cập nhật thứ tự nhóm cho danh mục "${categoryName}".`,
+            data: result
+        });
+    } catch (error) {
+        next(error);
+    }
+};

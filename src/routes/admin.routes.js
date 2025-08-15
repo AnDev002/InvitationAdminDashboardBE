@@ -86,11 +86,13 @@ router.route('/taxonomies')
     .put(authorize('admin', 'marketing'), adminController.updateInvitationTaxonomy);
 
 router.post('/taxonomies/delete', authorize('admin', 'marketing'), adminController.deleteInvitationTaxonomy);
+router.put('/taxonomies/reorder-groups', authorize('admin', 'marketing'), adminController.updateGroupOrder);
 
 // Quản lý Điều hướng (Header Menu)
 router.route('/navigation')
     .get(authorize('admin', 'marketing'), adminController.getNavigation)
     .put(authorize('admin', 'marketing'), adminController.updateNavigation);
+
 
 
 module.exports = router;
