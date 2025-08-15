@@ -287,10 +287,6 @@ const updateGroupOrderInCategory = async (categoryName, orderedGroups) => {
     return settings.seo.groupOrder;
 };
 
-
-
-
-
 module.exports = {
     getDashboardData,
     getSettings,
