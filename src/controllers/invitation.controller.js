@@ -3,6 +3,7 @@ const mongoose = require('mongoose'); // Thêm dòng này để kiểm tra Objec
 const sharp = require('sharp');
 const { uploadFileToR2 } = require('../services/r2.service.js'); // Đảm bảo bạn đã export hàm này
 const _ = require('lodash'); // Thư viện tiện ích giúp set giá trị cho object lồng nhau
+const AppError = require('../../utils/AppError');
 
 // === Controllers cho các hành động cần xác thực ===
 
@@ -22,10 +23,10 @@ const createInvitation = async (req, res, next) => {
         });
     } catch (error) {
         if (error.code === 11000) {
-            return res.status(409).json({ message: 'Slug này đã được sử dụng. Vui lòng chọn một slug khác.' });
+            return next(new AppError('Slug này đã được sử dụng. Vui lòng chọn một slug khác.', 409));
         }
         if (error.message.includes('Không tìm thấy mẫu thiệp')) { // From service
-            return res.status(404).json({ message: error.message });
+             return next(new AppError(error.message, 404));
         }
         next(error);
     }
@@ -56,7 +57,7 @@ const getInvitation = async (req, res, next) => {
 
         const invitation = await invitationService.getInvitationByIdAndUser(invitationId, userId);
         if (!invitation) {
-            return res.status(404).json({ message: 'Không tìm thấy thiệp hoặc bạn không có quyền.' });
+            return next(new AppError('Không tìm thấy thiệp hoặc bạn không có quyền truy cập.', 404));
         }
         res.status(200).json({
             status: 'success',

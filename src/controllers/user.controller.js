@@ -1,5 +1,6 @@
 const userService = require('../services/user.service');
 const { deleteFileFromR2 } = require('../services/r2.service.js');
+const AppError = require('../../utils/AppError');
 
 const getUsers = async (req, res, next) => {
   try {
@@ -23,7 +24,7 @@ const getUser = async (req, res, next) => {
   try {
     const user = await userService.getUserById(req.params.id);
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return next(new AppError('Không tìm thấy người dùng với ID này.', 404));
     }
     res.status(200).json(user);
   } catch (error) {
@@ -35,7 +36,7 @@ const getMe = async (req, res, next) => {
     try {
         const user = await userService.getUserById(req.user.id);
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+          return next(new AppError('Không tìm thấy người dùng với ID này. Vui lòng thử lại sau', 404));
         }
         res.status(200).json(user);
     } catch (error) {
@@ -70,7 +71,7 @@ const updateAvatar = async (req, res, next) => {
     const userId = req.user.id;
     
     if (!req.file || !req.file.r2Url) {
-      return res.status(400).json({ message: 'Please upload an image file.' });
+      return next(new AppError('Làm ơn hãy đăng lên một bức ảnh.', 404));
     }
 
     // --- TỰ ĐỘNG XÓA AVATAR CŨ TRÊN R2 ---
@@ -129,7 +130,7 @@ const updateUser = async (req, res, next) => {
         const { password, ...updateData } = req.body;
         const user = await userService.updateUser(req.params.id, updateData);
         if (!user) {
-            return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+            return next(new AppError('Không tìm thấy người dùng để cập nhật.', 404));
         }
         res.status(200).send({ // Sử dụng mã 200
             status: 'success',
