@@ -171,65 +171,88 @@ const deleteInvitationTaxonomy = async (taxonomyType, name) => {
 
 const getNavigation = async () => {
     const settings = await getSettings();
+    // Sử dụng cấu trúc đã lưu nếu có và không rỗng.
     if (settings.headerNav && settings.headerNav.length > 0) {
         return settings.headerNav;
     }
 
-    // --- LOGIC TỰ ĐỘNG TẠO CÂY ĐÃ ĐƯỢC SỬA LỖI ---
     console.log("Header navigation not found, generating from templates...");
-    const templates = await Template.find().select('category group type').lean();
+    // Chỉ lấy các template đang hoạt động để xây dựng cây.
+    const templates = await Template.find({ isActive: true }).select('category group type').lean();
     
-    const groupedByCategory = _.groupBy(templates, 'category');
-    
-    const generatedNav = Object.keys(groupedByCategory)
-        .filter(categoryName => categoryName && categoryName !== 'undefined' && categoryName !== 'null') // Lọc category không hợp lệ
-        .map(categoryName => {
-            
-            const groupsUnderCategory = _.groupBy(groupedByCategory[categoryName], 'group');
-            
-            return {
+    // Sử dụng Map để xây dựng cấu trúc phân cấp một cách hiệu quả.
+    const categoryMap = new Map();
+
+    // Xử lý từng template để xây dựng cây.
+    for (const template of templates) {
+        // Bỏ qua các template không có category.
+        if (!template.category || template.category === 'undefined' || template.category === 'null') {
+            continue;
+        }
+
+        const categoryName = template.category;
+        // Gán một tên nhóm mặc định nếu group bị thiếu, để đảm bảo type vẫn được hiển thị.
+        const groupName = template.group || 'Chưa phân nhóm'; 
+        const typeName = template.type;
+
+        // --- Xử lý cấp Category ---
+        if (!categoryMap.has(categoryName)) {
+            categoryMap.set(categoryName, {
                 id: _.uniqueId('category_'),
                 title: categoryName,
-                path: `/thiep-moi/${_.kebabCase(categoryName)}`,
+                path: `/invitations/category/${_.kebabCase(categoryName)}`,
                 type: 'category',
                 originalName: categoryName,
                 isVisible: true,
-                children: Object.keys(groupsUnderCategory)
-                    .filter(groupName => groupName && groupName !== 'undefined' && groupName !== 'null') // Lọc group không hợp lệ
-                    .map(groupName => {
-                        
-                        // Lấy danh sách các 'type' duy nhất và hợp lệ
-                        const typesUnderGroup = _.chain(groupsUnderCategory[groupName])
-                            .map('type')
-                            .filter(typeName => typeName && typeName !== 'undefined' && typeName !== 'null') // Lọc type không hợp lệ
-                            .uniq()
-                            .value();
+                children: new Map() // Dùng Map cho group để truy cập và thêm mới dễ dàng.
+            });
+        }
+        
+        const categoryNode = categoryMap.get(categoryName);
 
-                        return {
-                            id: _.uniqueId('group_'),
-                            title: groupName,
-                            path: `/thiep-moi/${_.kebabCase(categoryName)}/${_.kebabCase(groupName)}`,
-                            type: 'group',
-                            originalName: groupName,
-                            isVisible: true,
-                            children: typesUnderGroup.map(typeName => ({
-                                id: _.uniqueId('type_'),
-                                title: typeName,
-                                path: `/thiep-moi/${_.kebabCase(categoryName)}/${_.kebabCase(groupName)}/${_.kebabCase(typeName)}`,
-                                type: 'type',
-                                originalName: typeName,
-                                isVisible: true,
-                                children: [], // Cấp 3 không có con
-                            }))
-                        };
-                    })
-            };
+        // --- Xử lý cấp Group ---
+        if (!categoryNode.children.has(groupName)) {
+            categoryNode.children.set(groupName, {
+                id: _.uniqueId('group_'),
+                title: groupName,
+                path: `/invitations/category/${_.kebabCase(categoryName)}/${_.kebabCase(groupName)}`,
+                type: 'group',
+                originalName: groupName,
+                isVisible: true,
+                children: new Set() // Dùng Set cho type để tự động loại bỏ các giá trị trùng lặp.
+            });
+        }
+
+        const groupNode = categoryNode.children.get(groupName);
+
+        // --- Xử lý cấp Type ---
+        if (typeName && typeName !== 'undefined' && typeName !== 'null') {
+            groupNode.children.add(typeName);
+        }
+    }
+
+    // Chuyển đổi từ cấu trúc Map và Set về cấu trúc mảng lồng nhau mà frontend cần.
+    const generatedNav = Array.from(categoryMap.values()).map(category => {
+        category.children = Array.from(category.children.values()).map(group => {
+            group.children = Array.from(group.children).map(typeName => ({
+                id: _.uniqueId('type_'),
+                title: typeName,
+                path: `/invitations/category/${_.kebabCase(category.originalName)}/${_.kebabCase(group.originalName)}/${_.kebabCase(typeName)}`,
+                type: 'type',
+                originalName: typeName,
+                isVisible: true,
+                children: [], // Cấp 3 (Type) không có con.
+            }));
+            return group;
         });
+        return category;
+    });
 
-    // Lưu lại cây vừa tạo để lần sau không cần tạo lại
+    // Lưu lại cấu trúc vừa tạo để lần sau không cần tạo lại.
     await updateNavigation(generatedNav);
     return generatedNav;
 };
+
 
 
 
