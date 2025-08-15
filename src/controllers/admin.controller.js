@@ -14,6 +14,7 @@ exports.getDashboardData = async (req, res, next) => {
     }
 };
 
+
 // Settings
 exports.getSettings = async (req, res, next) => {
     try {
@@ -59,6 +60,7 @@ exports.updateSettings = async (req, res, next) => {
     }
 };
 
+
 // ++ CONTROLLERS MỚI CHO QUẢN LÝ DANH MỤC VÀ ĐIỀU HƯỚNG ++
 
 exports.getInvitationTaxonomies = async (req, res, next) => {
@@ -70,6 +72,7 @@ exports.getInvitationTaxonomies = async (req, res, next) => {
     }
 };
 
+
 exports.updateInvitationTaxonomy = async (req, res, next) => {
     try {
         const { taxonomyType, oldName, newName } = req.body;
@@ -80,6 +83,22 @@ exports.updateInvitationTaxonomy = async (req, res, next) => {
         res.status(200).json({
             status: 'success',
             message: `Đã cập nhật ${result.modifiedCount} mục.`,
+            data: result
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+exports.addInvitationTaxonomy = async (req, res, next) => {
+    try {
+        const { taxonomyType, name, parentCategory, parentGroup } = req.body;
+        if (!['category', 'group', 'type'].includes(taxonomyType) || !name) {
+            return res.status(400).json({ message: 'Dữ liệu không hợp lệ.' });
+        }
+        const result = await adminService.addInvitationTaxonomy(taxonomyType, name, parentCategory, parentGroup);
+        res.status(201).json({
+            status: 'success',
+            message: `Đã thêm ${taxonomyType} mới thành công.`,
             data: result
         });
     } catch (error) {
@@ -98,6 +117,34 @@ exports.deleteInvitationTaxonomy = async (req, res, next) => {
             status: 'success',
             message: `Đã cập nhật ${result.modifiedCount} mục.`,
             data: result
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+exports.getTaxonomyTree = async (req, res, next) => {
+    try {
+        const navigation = await adminService.getNavigation(); // Service vẫn giữ tên cũ để tái sử dụng
+        res.status(200).json({ status: 'success', data: navigation });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// SỬA ĐỔI: Đổi tên hàm updateNavigation -> saveTaxonomyTree
+exports.saveTaxonomyTree = async (req, res, next) => {
+    try {
+        // Frontend gửi { tree: [...] }, nên ta lấy req.body.tree
+        const { tree } = req.body;
+        if (!Array.isArray(tree)) {
+            return res.status(400).json({ message: 'Dữ liệu điều hướng phải là một mảng.' });
+        }
+        const updatedNavigation = await adminService.updateNavigation(tree); // Service vẫn giữ tên cũ
+        res.status(200).json({
+            status: 'success',
+            message: 'Cấu trúc menu đã được cập nhật thành công.',
+            data: updatedNavigation
         });
     } catch (error) {
         next(error);

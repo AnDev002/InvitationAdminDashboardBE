@@ -1,3 +1,5 @@
+// AdminBE/routes/admin.routes.js
+
 const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middleware/auth.middleware');
@@ -7,7 +9,7 @@ const adminController = require('../controllers/admin.controller');
 const productController = require('../controllers/product.controller');
 const templateController = require('../controllers/invitationTemplate.controller');
 const userController = require('../controllers/user.controller');
-const pageRoutes = require('./page.routes'); 
+const pageRoutes = require('./page.routes');
 const designAssetRoutes = require('./designAsset.routes');
 const { upload, resizeImage, uploadImageToR2 } = require('../middleware/upload.middleware');
 const { validateProduct } = require('../utils/validators');
@@ -38,7 +40,7 @@ const productUpload = upload.fields([
 router.route('/products')
     .get(authorize('admin', 'designer'), productController.getProducts)
     .post(
-        authorize('admin', 'designer'), 
+        authorize('admin', 'designer'),
         productUpload,
         resizeImage,
         uploadImageToR2,
@@ -48,7 +50,7 @@ router.route('/products')
 
 router.route('/products/:id')
     .put(
-        authorize('admin', 'designer'), 
+        authorize('admin', 'designer'),
         productUpload,
         resizeImage,
         uploadImageToR2,
@@ -65,7 +67,7 @@ router.get('/templates/types', authorize('admin', 'marketing', 'designer'), temp
 router.get('/templates/groups', authorize('admin', 'marketing', 'designer'), templateController.getTemplateGroups);
 router.post('/templates/bulk-import', authorize('admin', 'marketing', 'designer'), templateController.bulkCreateTemplates);
 router.post('/templates', authorize('admin', 'marketing', 'designer'), upload.single('image'), resizeImage, uploadImageToR2, templateController.createTemplate);
-router.post('/templates/reorder', authorize('admin', 'marketing', 'designer'), templateController.reorderTemplates); 
+router.post('/templates/reorder', authorize('admin', 'marketing', 'designer'), templateController.reorderTemplates);
 
 router.get('/templates/:id', authorize('admin', 'designer'), templateController.getTemplateById);
 router.put('/templates/:id', authorize('admin', 'designer'), upload.single('image'), resizeImage, uploadImageToR2, templateController.updateTemplate);
@@ -83,17 +85,16 @@ router.put('/settings', authorize('admin', 'marketing'), upload.any(), adminCont
 // Quản lý Danh mục, Nhóm, Loại của Thiệp mời
 router.route('/taxonomies')
     .get(authorize('admin', 'marketing'), adminController.getInvitationTaxonomies)
-    .put(authorize('admin', 'marketing'), adminController.updateInvitationTaxonomy);
+    .put(authorize('admin', 'marketing'), adminController.updateInvitationTaxonomy); // Dùng để đổi tên
 
+router.post('/taxonomies/add', authorize('admin', 'marketing'), adminController.addInvitationTaxonomy); // THÊM MỚI
 router.post('/taxonomies/delete', authorize('admin', 'marketing'), adminController.deleteInvitationTaxonomy);
 router.put('/taxonomies/reorder-groups', authorize('admin', 'marketing'), adminController.updateGroupOrder);
 
 
-// Quản lý Điều hướng (Header Menu)
-router.route('/navigation')
-    .get(authorize('admin', 'marketing'), adminController.getNavigation)
-    .put(authorize('admin', 'marketing'), adminController.updateNavigation);
-
-
+// Quản lý cấu trúc cây Điều hướng (Header Menu)
+router.route('/taxonomies/tree') // SỬA ĐỔI: Đổi /navigation thành /taxonomies/tree
+    .get(authorize('admin', 'marketing'), adminController.getTaxonomyTree) // SỬA ĐỔI
+    .put(authorize('admin', 'marketing'), adminController.saveTaxonomyTree); // SỬA ĐỔI
 
 module.exports = router;

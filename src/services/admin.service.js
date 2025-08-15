@@ -94,6 +94,7 @@ const updateSettings = async (settingsData) => {
     return settings;
 };
 
+
 /**
  * Lấy tất cả các taxonomies (category, group, type) từ các mẫu thiệp mời.
  */
@@ -108,6 +109,8 @@ const getInvitationTaxonomies = async () => {
     };
 };
 
+
+
 /**
  * Cập nhật một taxonomy (category, group, type) cho tất cả các mẫu thiệp liên quan.
  * @param {string} taxonomyType - 'category', 'group', or 'type'
@@ -119,6 +122,35 @@ const updateInvitationTaxonomy = async (taxonomyType, oldName, newName) => {
     const filter = { [taxonomyType]: oldName };
     const result = await Template.updateMany(filter, update);
     return result;
+};
+
+const addInvitationTaxonomy = async (taxonomyType, name, parentCategory = 'Chung', parentGroup = 'Chung') => {
+    // Để tạo một danh mục mới, chúng ta tạo một mẫu thiệp mời ẩn
+    // chứa thông tin danh mục đó.
+    const placeholderTemplate = {
+        title: `Placeholder-${taxonomyType}-${name}-${Date.now()}`,
+        imgSrc: 'https://placehold.co/100x100/eee/ccc?text=Placeholder',
+        isActive: false, // Quan trọng: mẫu này sẽ không hiển thị cho người dùng
+        templateData: { pages: [] }
+    };
+
+    if (taxonomyType === 'category') {
+        placeholderTemplate.category = name;
+        placeholderTemplate.group = 'Nhóm Mặc định';
+        placeholderTemplate.type = 'Loại Mặc định';
+    } else if (taxonomyType === 'group') {
+        placeholderTemplate.category = parentCategory;
+        placeholderTemplate.group = name;
+        placeholderTemplate.type = 'Loại Mặc định';
+    } else if (taxonomyType === 'type') {
+        placeholderTemplate.category = parentCategory;
+        placeholderTemplate.group = parentGroup;
+        placeholderTemplate.type = name;
+    } else {
+        throw new Error('Loại danh mục không hợp lệ.');
+    }
+    
+    return await Template.create(placeholderTemplate);
 };
 
 /**
@@ -200,6 +232,7 @@ const getNavigation = async () => {
 };
 
 
+
 /**
  * Cập nhật cấu trúc menu điều hướng (header).
  * @param {Array} navData - Mảng các mục menu mới (cấu trúc cây).
@@ -237,6 +270,7 @@ const updateGroupOrderInCategory = async (categoryName, orderedGroups) => {
 
 
 
+
 module.exports = {
     getDashboardData,
     getSettings,
@@ -246,5 +280,6 @@ module.exports = {
     deleteInvitationTaxonomy,
     getNavigation,
     updateNavigation,
-    updateGroupOrderInCategory
+    updateGroupOrderInCategory,
+    addInvitationTaxonomy
 };
