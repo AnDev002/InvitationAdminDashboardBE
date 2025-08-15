@@ -88,9 +88,6 @@ router.route('/taxonomies')
 router.post('/taxonomies/delete', authorize('admin', 'marketing'), adminController.deleteInvitationTaxonomy);
 router.put('/taxonomies/reorder-groups', authorize('admin', 'marketing'), adminController.updateGroupOrder);
 
-router.route('/taxonomies/tree')
-    .get(authorize('admin', 'marketing'), adminController.getTaxonomyTree)
-    .put(authorize('admin', 'marketing'), adminController.saveTaxonomyTree);
 
 // Quản lý Điều hướng (Header Menu)
 router.route('/navigation')
