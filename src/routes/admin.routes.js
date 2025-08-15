@@ -1,4 +1,3 @@
-// AdminTrainData/AdminBE/routes/admin.routes.js
 const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middleware/auth.middleware');
@@ -8,7 +7,6 @@ const adminController = require('../controllers/admin.controller');
 const productController = require('../controllers/product.controller');
 const templateController = require('../controllers/invitationTemplate.controller');
 const userController = require('../controllers/user.controller');
-// --- THÊM MỚI: Import page routes ---
 const pageRoutes = require('./page.routes'); 
 const designAssetRoutes = require('./designAsset.routes');
 const { upload, resizeImage, uploadImageToR2 } = require('../middleware/upload.middleware');
@@ -19,11 +17,8 @@ router.use(protect);
 
 router.get('/users/me', userController.getMe);
 // ===== BẢO VỆ TẤT CẢ CÁC ROUTE BÊN DƯỚI =====
-// Tất cả các route trong file này đều yêu cầu đăng nhập VÀ phải là admin
-// router.use(authorize('admin'));
-// === Dashboard ===
 router.get('/dashboard', adminController.getDashboardData);
-// === User (cho admin xem và thông tin cá nhân của admin) ===
+// === User ===
 router.route('/users')
     .get(userController.getUsers)
     .post(userController.createUser);
@@ -67,22 +62,35 @@ router.route('/products/:id')
 router.get('/templates', authorize('admin', 'marketing', 'designer'), templateController.getInvitationTemplates);
 router.get('/templates/categories', authorize('admin', 'marketing', 'designer'), templateController.getTemplateCategories);
 router.get('/templates/types', authorize('admin', 'marketing', 'designer'), templateController.getTemplateTypesForCategory);
-router.get('/templates/groups', authorize('admin', 'marketing', 'designer'), templateController.getTemplateGroups); // Route này phải nằm ở đây
+router.get('/templates/groups', authorize('admin', 'marketing', 'designer'), templateController.getTemplateGroups);
 router.post('/templates/bulk-import', authorize('admin', 'marketing', 'designer'), templateController.bulkCreateTemplates);
 router.post('/templates', authorize('admin', 'marketing', 'designer'), upload.single('image'), resizeImage, uploadImageToR2, templateController.createTemplate);
 router.post('/templates/reorder', authorize('admin', 'marketing', 'designer'), templateController.reorderTemplates); 
 
-// ROUTE ĐỘNG (KHÁI QUÁT) ĐƯỢC ĐẶT Ở SAU CÙNG
-router.get('/templates/:id', authorize('admin', 'designer'), templateController.getTemplateById); // Route này phải nằm sau các route tĩnh ở trên
+router.get('/templates/:id', authorize('admin', 'designer'), templateController.getTemplateById);
 router.put('/templates/:id', authorize('admin', 'designer'), upload.single('image'), resizeImage, uploadImageToR2, templateController.updateTemplate);
 router.delete('/templates/:id', authorize('admin', 'designer'), templateController.deleteTemplate);
 
-// --- THÊM MỚI: Gắn các route quản lý trang vào đây ---
+// --- Quản lý Trang ---
 router.use('/pages', authorize('admin', 'marketing'), pageRoutes);
 
 // === Settings & SEO ===
 router.get('/settings', authorize('admin', 'marketing'), adminController.getSettings);
 router.put('/settings', authorize('admin', 'marketing'), upload.any(), adminController.updateSettings);
+
+// ++ ROUTES MỚI CHO QUẢN LÝ DANH MỤC VÀ ĐIỀU HƯỚNG ++
+
+// Quản lý Danh mục, Nhóm, Loại của Thiệp mời
+router.route('/taxonomies')
+    .get(authorize('admin', 'marketing'), adminController.getInvitationTaxonomies)
+    .put(authorize('admin', 'marketing'), adminController.updateInvitationTaxonomy);
+
+router.post('/taxonomies/delete', authorize('admin', 'marketing'), adminController.deleteInvitationTaxonomy);
+
+// Quản lý Điều hướng (Header Menu)
+router.route('/navigation')
+    .get(authorize('admin', 'marketing'), adminController.getNavigation)
+    .put(authorize('admin', 'marketing'), adminController.updateNavigation);
 
 
 module.exports = router;

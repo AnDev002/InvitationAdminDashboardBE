@@ -16,17 +16,14 @@ const getDashboardData = async () => {
 
     const formattedDailyStats = []; // Dữ liệu giả định, có thể tích hợp sau
 
-    // Truy vấn sản phẩm hot (giả định dựa trên trường 'clicks' nếu có)
     const hotProducts = await Product.find().sort({ clicks: -1 }).limit(5).select('title clicks');
     const formattedHotProducts = hotProducts.map(p => ({ id: p._id, name: p.title, clicks: p.clicks || 0 }));
 
-    // SỬA LỖI TẠI ĐÂY: Lấy 5 mẫu thiệp có lượt xem cao nhất
     const hotTemplates = await Template.find()
-        .sort({ views: -1 }) // Sắp xếp theo lượt xem giảm dần
-        .limit(5)           // Giới hạn 5 kết quả
-        .select('title views'); // Chỉ lấy trường title và views
+        .sort({ views: -1 })
+        .limit(5)
+        .select('title views');
 
-    // Định dạng lại dữ liệu để frontend dễ dàng sử dụng
     const formattedHotTemplates = hotTemplates.map(t => ({
         id: t._id,
         name: t.title,
@@ -42,7 +39,7 @@ const getDashboardData = async () => {
             dailyVisitors: formattedDailyStats
         },
         hotProducts: formattedHotProducts,
-        hotTemplates: formattedHotTemplates, // Trả về dữ liệu đã được sắp xếp đúng
+        hotTemplates: formattedHotTemplates,
         lowStockProducts
     };
 };
@@ -51,7 +48,6 @@ const getDashboardData = async () => {
 const getSettings = async () => {
     let settings = await Setting.findOne({ singletonKey: "main_settings" });
     if (!settings) {
-        // Nếu chưa có, tạo mới với các giá trị mặc định để tránh lỗi null ở frontend
         console.log("Creating default settings document...");
         settings = await Setting.create({
             singletonKey: "main_settings",
@@ -73,49 +69,98 @@ const getSettings = async () => {
 
 
 const updateSettings = async (settingsData) => {
-    let settings = await Setting.findOne();
+    let settings = await Setting.findOne({ singletonKey: "main_settings" });
 
     if (!settings) {
-        // If no settings document exists at all, create a new one.
         settings = new Setting(settingsData);
     } else {
-        // Settings exist, update them carefully.
-
-        // For plain nested objects (not arrays of documents), merge is safe.
+        // Merge các object lồng nhau một cách cẩn thận
+        settings.livePreviewUrl = settingsData.livePreviewUrl || settings.livePreviewUrl;
         settings.theme = _.merge(settings.theme || {}, settingsData.theme);
         settings.banners = _.merge(settings.banners || {}, settingsData.banners);
-        
-        // For arrays of sub-documents, DIRECTLY REPLACE the array.
-        // This is the key fix. It tells Mongoose to process the new array
-        // from scratch, correctly casting each item and running validators.
-        if (settingsData.footer) {
-            if (settingsData.footer.socialLinks) {
-                settings.footer.socialLinks = settingsData.footer.socialLinks;
-            }
-            if (settingsData.footer.columns) {
-                settings.footer.columns = settingsData.footer.columns;
-            }
-        }
-        
-        if (settingsData.headerNav) {
-            settings.headerNav = settingsData.headerNav;
-        }
+        settings.footer = _.merge(settings.footer || {}, settingsData.footer);
+        settings.seo = _.merge(settings.seo || {}, settingsData.seo);
 
-        // Mark the footer as modified if it was part of the update.
-        // This can sometimes be necessary to let Mongoose know a mixed-type object has changed.
+        // Đánh dấu đã sửa đổi cho các đối tượng kiểu Mixed
         if (settingsData.footer) {
-           settings.markModified('footer');
+            settings.markModified('footer');
+        }
+        if (settingsData.seo) {
+            settings.markModified('seo');
         }
     }
 
-    // Now, save the updated document. Mongoose validation will run here.
     await settings.save();
     return settings;
 };
 
+/**
+ * Lấy tất cả các taxonomies (category, group, type) từ các mẫu thiệp mời.
+ */
+const getInvitationTaxonomies = async () => {
+    const categories = await Template.distinct('category');
+    const groups = await Template.distinct('group');
+    const types = await Template.distinct('type');
+    return {
+        categories: categories.filter(c => c), // Lọc bỏ giá trị null hoặc rỗng
+        groups: groups.filter(g => g),
+        types: types.filter(t => t)
+    };
+};
+
+/**
+ * Cập nhật một taxonomy (category, group, type) cho tất cả các mẫu thiệp liên quan.
+ * @param {string} taxonomyType - 'category', 'group', or 'type'
+ * @param {string} oldName - Tên hiện tại của taxonomy.
+ * @param {string} newName - Tên mới cho taxonomy.
+ */
+const updateInvitationTaxonomy = async (taxonomyType, oldName, newName) => {
+    const update = { $set: { [taxonomyType]: newName } };
+    const filter = { [taxonomyType]: oldName };
+    const result = await Template.updateMany(filter, update);
+    return result;
+};
+
+/**
+ * Xóa một taxonomy. Thay thế nó bằng 'Chưa phân loại'.
+ * @param {string} taxonomyType - 'category', 'group', or 'type'
+ * @param {string} name - Tên của taxonomy cần xóa.
+ */
+const deleteInvitationTaxonomy = async (taxonomyType, name) => {
+    const update = { $set: { [taxonomyType]: 'Chưa phân loại' } };
+    const filter = { [taxonomyType]: name };
+    const result = await Template.updateMany(filter, update);
+    return result;
+};
+
+/**
+ * Lấy cấu trúc menu điều hướng (header).
+ */
+const getNavigation = async () => {
+    const settings = await getSettings();
+    return settings.headerNav || [];
+};
+
+/**
+ * Cập nhật cấu trúc menu điều hướng (header).
+ * @param {Array} navData - Mảng các mục menu mới.
+ */
+const updateNavigation = async (navData) => {
+    const settings = await Setting.findOneAndUpdate(
+        { singletonKey: "main_settings" },
+        { $set: { headerNav: navData } },
+        { new: true, upsert: true } // upsert: tạo mới nếu chưa tồn tại
+    );
+    return settings.headerNav;
+};
 
 module.exports = {
     getDashboardData,
     getSettings,
-    updateSettings
+    updateSettings,
+    getInvitationTaxonomies,
+    updateInvitationTaxonomy,
+    deleteInvitationTaxonomy,
+    getNavigation,
+    updateNavigation
 };
