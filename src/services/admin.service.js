@@ -136,14 +136,59 @@ const deleteInvitationTaxonomy = async (taxonomyType, name) => {
 /**
  * Lấy cấu trúc menu điều hướng (header).
  */
+
 const getNavigation = async () => {
     const settings = await getSettings();
-    return settings.headerNav || [];
+    if (settings.headerNav && settings.headerNav.length > 0) {
+        return settings.headerNav;
+    }
+
+    // --- Logic tự động tạo cây nếu headerNav rỗng ---
+    console.log("Header navigation not found, generating from templates...");
+    const templates = await Template.find().select('category group type').lean();
+    
+    const grouped = _.groupBy(templates, 'category');
+    
+    const generatedNav = Object.keys(grouped).map(categoryName => {
+        const groupsUnderCategory = _.groupBy(grouped[categoryName], 'group');
+        return {
+            id: _.uniqueId('category_'),
+            title: categoryName,
+            path: `/thiep-moi/${_.kebabCase(categoryName)}`,
+            type: 'category',
+            originalName: categoryName,
+            isVisible: true,
+            children: Object.keys(groupsUnderCategory).map(groupName => {
+                const typesUnderGroup = _.uniqBy(groupsUnderCategory[groupName], 'type');
+                return {
+                    id: _.uniqueId('group_'),
+                    title: groupName,
+                    path: `/thiep-moi/${_.kebabCase(categoryName)}/${_.kebabCase(groupName)}`,
+                    type: 'group',
+                    originalName: groupName,
+                    isVisible: true,
+                    children: typesUnderGroup.map(t => ({
+                        id: _.uniqueId('type_'),
+                        title: t.type,
+                        path: `/thiep-moi/${_.kebabCase(categoryName)}/${_.kebabCase(groupName)}/${_.kebabCase(t.type)}`,
+                        type: 'type',
+                        originalName: t.type,
+                        isVisible: true,
+                        children: [],
+                    }))
+                };
+            })
+        };
+    });
+
+    // Lưu lại cây vừa tạo để lần sau không cần tạo lại
+    await updateNavigation(generatedNav);
+    return generatedNav;
 };
 
 /**
  * Cập nhật cấu trúc menu điều hướng (header).
- * @param {Array} navData - Mảng các mục menu mới.
+ * @param {Array} navData - Mảng các mục menu mới (cấu trúc cây).
  */
 const updateNavigation = async (navData) => {
     const settings = await Setting.findOneAndUpdate(

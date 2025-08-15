@@ -6,7 +6,10 @@ const navItemSchema = new mongoose.Schema({
     title: { type: String, required: true },
     path: { type: String, required: true },
     order: { type: Number, default: 0 },
-    isVisible: { type: Boolean, default: true }
+    isVisible: { type: Boolean, default: true },
+    type: { type: String, enum: ['category', 'group', 'type'], required: true },
+    originalName: { type: String },
+    children: [navItemSchema] 
 }, { _id: false });
 
 const socialLinkSchema = new mongoose.Schema({
