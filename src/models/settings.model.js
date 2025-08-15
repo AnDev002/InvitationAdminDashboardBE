@@ -1,7 +1,8 @@
 // AdminBE/models/settings.model.js
 const mongoose = require('mongoose');
+const navItemSchema = new mongoose.Schema({}, { _id: false });
 
-const navItemSchema = new mongoose.Schema({
+navItemSchema.add({
     id: { type: String, required: true }, 
     title: { type: String, required: true },
     path: { type: String, required: true },
@@ -10,7 +11,7 @@ const navItemSchema = new mongoose.Schema({
     type: { type: String, enum: ['category', 'group', 'type'], required: true },
     originalName: { type: String },
     children: [navItemSchema] 
-}, { _id: false });
+});
 
 const socialLinkSchema = new mongoose.Schema({
     id: { type: String, required: true },
