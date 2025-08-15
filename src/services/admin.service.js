@@ -253,9 +253,6 @@ const getNavigation = async () => {
     return generatedNav;
 };
 
-
-
-
 /**
  * Cập nhật cấu trúc menu điều hướng (header).
  * @param {Array} navData - Mảng các mục menu mới (cấu trúc cây).
