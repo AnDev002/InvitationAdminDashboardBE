@@ -171,6 +171,133 @@ const updateGroupOrderInCategory = async (categoryName, orderedGroups) => {
     return settings.seo.groupOrder;
 };
 
+const getTaxonomyTree = async () => {
+    const settings = await exports.getSettings(); // Dùng lại hàm getSettings đã có
+
+    if (settings.taxonomyTree && settings.taxonomyTree.length > 0) {
+        return settings.taxonomyTree;
+    }
+
+    // --- Fallback: Tự động tạo cây nếu chưa tồn tại ---
+    console.log("Taxonomy tree not found in settings, generating a new one...");
+    const aggregation = await Template.aggregate([
+        { $match: { category: { $ne: null }, group: { $ne: null }, type: { $ne: null } } },
+        {
+            $group: {
+                _id: { category: "$category", group: "$group" },
+                types: { $addToSet: "$type" }
+            }
+        },
+        {
+            $group: {
+                _id: "$_id.category",
+                groups: {
+                    $push: {
+                        id: { $concat: ["group_", "$_id.group"] }, // Tạo ID tạm thời
+                        name: "$_id.group",
+                        children: {
+                            $map: {
+                                input: "$types",
+                                as: "type",
+                                in: { id: { $concat: ["type_", "$$type"] }, name: "$$type" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            $project: {
+                _id: 0,
+                id: { $concat: ["cat_", "$_id"] },
+                name: "$_id",
+                children: "$groups"
+            }
+        }
+    ]);
+
+    return aggregation;
+};
+
+
+/**
+ * [HÀM MỚI]
+ * Lưu toàn bộ cấu trúc cây và đồng bộ hóa các thay đổi vào collection `invitationtemplates`.
+ * @param {Array} newTree - Cấu trúc cây mới từ frontend.
+ */
+const saveTaxonomyTree = async (newTree) => {
+    // Lấy trạng thái cũ để so sánh
+    const oldSettings = await Setting.findOne({ singletonKey: "main_settings" }).lean();
+    const oldTree = oldSettings.taxonomyTree || [];
+
+    // --- Helper functions để xử lý so sánh ---
+    const flattenTree = (tree) => {
+        const map = new Map();
+        tree.forEach(cat => {
+            map.set(cat.id, { ...cat, parentId: null, level: 1 });
+            (cat.children || []).forEach(group => {
+                map.set(group.id, { ...group, parentId: cat.id, level: 2 });
+                (group.children || []).forEach(type => {
+                    map.set(type.id, { ...type, parentId: group.id, level: 3 });
+                });
+            });
+        });
+        return map;
+    };
+    
+    const oldMap = flattenTree(oldTree);
+    const newMap = flattenTree(newTree);
+
+    const operations = []; // Mảng chứa các lệnh bulk write cho MongoDB
+
+    // --- Xử lý các thay đổi (Sửa tên, Xóa) ---
+    for (const [id, oldItem] of oldMap.entries()) {
+        const newItem = newMap.get(id);
+
+        if (!newItem) {
+            // **Item đã bị xóa**
+            switch (oldItem.level) {
+                case 1: // Category
+                    operations.push({ updateMany: { filter: { category: oldItem.name }, update: { $set: { category: "Uncategorized" } } } });
+                    break;
+                case 2: // Group
+                    operations.push({ updateMany: { group: oldItem.name }, update: { $set: { group: "Uncategorized" } } });
+                    break;
+                case 3: // Type
+                    operations.push({ updateMany: { type: oldItem.name }, update: { $set: { type: "Uncategorized" } } });
+                    break;
+            }
+        } else if (newItem.name !== oldItem.name) {
+            // **Item đã được đổi tên**
+            switch (oldItem.level) {
+                case 1:
+                    operations.push({ updateMany: { filter: { category: oldItem.name }, update: { $set: { category: newItem.name } } } });
+                    break;
+                case 2:
+                    operations.push({ updateMany: { group: oldItem.name }, update: { $set: { group: newItem.name } } });
+                    break;
+                case 3:
+                    operations.push({ updateMany: { type: oldItem.name }, update: { $set: { type: newItem.name } } });
+                    break;
+            }
+        }
+    }
+    
+    // --- Thực thi các thay đổi trên collection `invitationtemplates` ---
+    if (operations.length > 0) {
+        await Template.bulkWrite(operations);
+    }
+
+    // --- Cuối cùng, lưu lại toàn bộ cấu trúc cây mới vào `settings` ---
+    const result = await Setting.findOneAndUpdate(
+        { singletonKey: "main_settings" },
+        { $set: { taxonomyTree: newTree } },
+        { new: true, upsert: true }
+    );
+
+    return result.taxonomyTree;
+};
+
 module.exports = {
     getDashboardData,
     getSettings,
@@ -180,5 +307,7 @@ module.exports = {
     deleteInvitationTaxonomy,
     getNavigation,
     updateNavigation,
-    updateGroupOrderInCategory
+    updateGroupOrderInCategory,
+    saveTaxonomyTree,
+    getTaxonomyTree,
 };

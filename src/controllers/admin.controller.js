@@ -148,3 +148,28 @@ exports.updateGroupOrder = async (req, res, next) => {
         next(error);
     }
 };
+exports.getTaxonomyTree = async (req, res, next) => {
+    try {
+        const tree = await adminService.getTaxonomyTree();
+        res.status(200).json({ status: 'success', data: tree });
+    } catch (error) {
+        next(error);
+    }
+};
+
+exports.saveTaxonomyTree = async (req, res, next) => {
+    try {
+        const { tree } = req.body;
+        if (!Array.isArray(tree)) {
+            return res.status(400).json({ message: 'Dữ liệu cây không hợp lệ.' });
+        }
+        const updatedTree = await adminService.saveTaxonomyTree(tree);
+        res.status(200).json({
+            status: 'success',
+            message: 'Cấu trúc danh mục đã được lưu thành công.',
+            data: updatedTree
+        });
+    } catch (error) {
+        next(error);
+    }
+};

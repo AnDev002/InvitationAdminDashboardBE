@@ -29,6 +29,23 @@ const footerColumnSchema = new mongoose.Schema({
     links: [footerLinkSchema]
 }, { _id: false });
 
+const taxonomyTypeSchema = new mongoose.Schema({
+    id: { type: String, required: true },
+    name: { type: String, required: true }
+}, { _id: false });
+
+const taxonomyGroupSchema = new mongoose.Schema({
+    id: { type: String, required: true },
+    name: { type: String, required: true },
+    children: [taxonomyTypeSchema] // Cấp 3: Loại (Types)
+}, { _id: false });
+
+const taxonomyCategorySchema = new mongoose.Schema({
+    id: { type: String, required: true },
+    name: { type: String, required: true },
+    children: [taxonomyGroupSchema] // Cấp 2: Nhóm (Groups)
+}, { _id: false });
+
 const settingsSchema = new mongoose.Schema({
     singletonKey: { type: String, default: "main_settings", unique: true },
     livePreviewUrl: { type: String, default: "https://baotrithangmay.vn" },
@@ -64,7 +81,7 @@ const settingsSchema = new mongoose.Schema({
         socialLinks: [socialLinkSchema],
         columns: [footerColumnSchema]
     },
-
+    taxonomyTree: [taxonomyCategorySchema],
     seo: {
         pages: {
             home: {
