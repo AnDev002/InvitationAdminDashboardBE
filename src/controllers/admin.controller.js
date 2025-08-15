@@ -1,3 +1,5 @@
+// AdminTrainData/AdminBE/controllers/admin.controller.js
+
 const adminService = require('../services/admin.service');
 const _ = require('lodash');
 const sharp = require('sharp');
@@ -27,13 +29,16 @@ exports.getSettings = async (req, res, next) => {
 
 exports.updateSettings = async (req, res, next) => {
     try {
+        // Lấy dữ liệu JSON từ trường 'settings'
         const settingsData = JSON.parse(req.body.settings || '{}');
 
+        // Xử lý các file được tải lên
         if (req.files && req.files.length > 0) {
             const uploadPromises = req.files.map(async (file) => {
                 let fileBuffer = file.buffer;
                 let fileMimeType = file.mimetype;
 
+                // Tối ưu hóa ảnh (trừ file GIF)
                 if (file.mimetype !== 'image/gif') {
                     fileBuffer = await sharp(file.buffer)
                         .resize({ width: 1920, fit: 'inside', withoutEnlargement: true })
@@ -42,154 +47,24 @@ exports.updateSettings = async (req, res, next) => {
                     fileMimeType = 'image/webp';
                 }
 
+                // Tải file lên R2
                 const { url } = await uploadFileToR2(fileBuffer, fileMimeType);
+                
+                // Chuyển đổi fieldname (vd: 'footer_socialLinks_0_icon') thành đường dẫn ('footer.socialLinks[0].icon')
                 const path = file.fieldname.replace(/_(\d+)_/g, '[$1].').replace(/_/g, '.');
+
+                // Dùng lodash để gán URL mới vào đúng vị trí trong object settingsData
                 _.set(settingsData, path, url);
             });
             await Promise.all(uploadPromises);
         }
         
+        // Lưu object settings đã hoàn chỉnh
         const updatedSettings = await adminService.updateSettings(settingsData);
         
         res.status(200).json({
             message: "Cài đặt đã được cập nhật thành công.",
             data: updatedSettings
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-
-// ++ CONTROLLERS MỚI CHO QUẢN LÝ DANH MỤC VÀ ĐIỀU HƯỚNG ++
-
-exports.getInvitationTaxonomies = async (req, res, next) => {
-    try {
-        const taxonomies = await adminService.getInvitationTaxonomies();
-        res.status(200).json({ status: 'success', data: taxonomies });
-    } catch (error) {
-        next(error);
-    }
-};
-
-
-exports.updateInvitationTaxonomy = async (req, res, next) => {
-    try {
-        const { taxonomyType, oldName, newName } = req.body;
-        if (!['category', 'group', 'type'].includes(taxonomyType) || !oldName || !newName) {
-            return res.status(400).json({ message: 'Dữ liệu không hợp lệ.' });
-        }
-        const result = await adminService.updateInvitationTaxonomy(taxonomyType, oldName, newName);
-        res.status(200).json({
-            status: 'success',
-            message: `Đã cập nhật ${result.modifiedCount} mục.`,
-            data: result
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-exports.addInvitationTaxonomy = async (req, res, next) => {
-    try {
-        const { taxonomyType, name, parentCategory, parentGroup } = req.body;
-        if (!['category', 'group', 'type'].includes(taxonomyType) || !name) {
-            return res.status(400).json({ message: 'Dữ liệu không hợp lệ.' });
-        }
-        const result = await adminService.addInvitationTaxonomy(taxonomyType, name, parentCategory, parentGroup);
-        res.status(201).json({
-            status: 'success',
-            message: `Đã thêm ${taxonomyType} mới thành công.`,
-            data: result
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-exports.deleteInvitationTaxonomy = async (req, res, next) => {
-    try {
-        const { taxonomyType, name } = req.body;
-        if (!['category', 'group', 'type'].includes(taxonomyType) || !name) {
-            return res.status(400).json({ message: 'Dữ liệu không hợp lệ.' });
-        }
-        const result = await adminService.deleteInvitationTaxonomy(taxonomyType, name);
-        res.status(200).json({
-            status: 'success',
-            message: `Đã cập nhật ${result.modifiedCount} mục.`,
-            data: result
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-exports.getTaxonomyTree = async (req, res, next) => {
-    try {
-        const navigation = await adminService.getNavigation(); // Service vẫn giữ tên cũ để tái sử dụng
-        res.status(200).json({ status: 'success', data: navigation });
-    } catch (error) {
-        next(error);
-    }
-};
-
-// SỬA ĐỔI: Đổi tên hàm updateNavigation -> saveTaxonomyTree
-exports.saveTaxonomyTree = async (req, res, next) => {
-    try {
-        // Frontend gửi { tree: [...] }, nên ta lấy req.body.tree
-        const { tree } = req.body;
-        if (!Array.isArray(tree)) {
-            return res.status(400).json({ message: 'Dữ liệu điều hướng phải là một mảng.' });
-        }
-        const updatedNavigation = await adminService.updateNavigation(tree); // Service vẫn giữ tên cũ
-        res.status(200).json({
-            status: 'success',
-            message: 'Cấu trúc menu đã được cập nhật thành công.',
-            data: updatedNavigation
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-exports.getNavigation = async (req, res, next) => {
-    try {
-        const navigation = await adminService.getNavigation();
-        res.status(200).json({ status: 'success', data: navigation });
-    } catch (error) {
-        next(error);
-    }
-};
-
-exports.updateNavigation = async (req, res, next) => {
-    try {
-        const { navData } = req.body;
-        if (!Array.isArray(navData)) {
-            return res.status(400).json({ message: 'Dữ liệu điều hướng phải là một mảng.' });
-        }
-        const updatedNavigation = await adminService.updateNavigation(navData);
-        res.status(200).json({
-            status: 'success',
-            message: 'Điều hướng đã được cập nhật thành công.',
-            data: updatedNavigation
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-exports.updateGroupOrder = async (req, res, next) => {
-    try {
-        const { categoryName, orderedGroups } = req.body;
-        if (!categoryName || !Array.isArray(orderedGroups)) {
-            return res.status(400).json({ message: 'Dữ liệu không hợp lệ.' });
-        }
-
-        const result = await adminService.updateGroupOrderInCategory(categoryName, orderedGroups);
-        
-        res.status(200).json({
-            status: 'success',
-            message: `Đã cập nhật thứ tự nhóm cho danh mục "${categoryName}".`,
-            data: result
         });
     } catch (error) {
         next(error);
