@@ -143,48 +143,62 @@ const getNavigation = async () => {
         return settings.headerNav;
     }
 
-    // --- Logic tự động tạo cây nếu headerNav rỗng ---
+    // --- LOGIC TỰ ĐỘNG TẠO CÂY ĐÃ ĐƯỢC SỬA LỖI ---
     console.log("Header navigation not found, generating from templates...");
     const templates = await Template.find().select('category group type').lean();
     
-    const grouped = _.groupBy(templates, 'category');
+    const groupedByCategory = _.groupBy(templates, 'category');
     
-    const generatedNav = Object.keys(grouped).map(categoryName => {
-        const groupsUnderCategory = _.groupBy(grouped[categoryName], 'group');
-        return {
-            id: _.uniqueId('category_'),
-            title: categoryName,
-            path: `/thiep-moi/${_.kebabCase(categoryName)}`,
-            type: 'category',
-            originalName: categoryName,
-            isVisible: true,
-            children: Object.keys(groupsUnderCategory).map(groupName => {
-                const typesUnderGroup = _.uniqBy(groupsUnderCategory[groupName], 'type');
-                return {
-                    id: _.uniqueId('group_'),
-                    title: groupName,
-                    path: `/thiep-moi/${_.kebabCase(categoryName)}/${_.kebabCase(groupName)}`,
-                    type: 'group',
-                    originalName: groupName,
-                    isVisible: true,
-                    children: typesUnderGroup.map(t => ({
-                        id: _.uniqueId('type_'),
-                        title: t.type,
-                        path: `/thiep-moi/${_.kebabCase(categoryName)}/${_.kebabCase(groupName)}/${_.kebabCase(t.type)}`,
-                        type: 'type',
-                        originalName: t.type,
-                        isVisible: true,
-                        children: [],
-                    }))
-                };
-            })
-        };
-    });
+    const generatedNav = Object.keys(groupedByCategory)
+        .filter(categoryName => categoryName && categoryName !== 'undefined' && categoryName !== 'null') // Lọc category không hợp lệ
+        .map(categoryName => {
+            
+            const groupsUnderCategory = _.groupBy(groupedByCategory[categoryName], 'group');
+            
+            return {
+                id: _.uniqueId('category_'),
+                title: categoryName,
+                path: `/thiep-moi/${_.kebabCase(categoryName)}`,
+                type: 'category',
+                originalName: categoryName,
+                isVisible: true,
+                children: Object.keys(groupsUnderCategory)
+                    .filter(groupName => groupName && groupName !== 'undefined' && groupName !== 'null') // Lọc group không hợp lệ
+                    .map(groupName => {
+                        
+                        // Lấy danh sách các 'type' duy nhất và hợp lệ
+                        const typesUnderGroup = _.chain(groupsUnderCategory[groupName])
+                            .map('type')
+                            .filter(typeName => typeName && typeName !== 'undefined' && typeName !== 'null') // Lọc type không hợp lệ
+                            .uniq()
+                            .value();
+
+                        return {
+                            id: _.uniqueId('group_'),
+                            title: groupName,
+                            path: `/thiep-moi/${_.kebabCase(categoryName)}/${_.kebabCase(groupName)}`,
+                            type: 'group',
+                            originalName: groupName,
+                            isVisible: true,
+                            children: typesUnderGroup.map(typeName => ({
+                                id: _.uniqueId('type_'),
+                                title: typeName,
+                                path: `/thiep-moi/${_.kebabCase(categoryName)}/${_.kebabCase(groupName)}/${_.kebabCase(typeName)}`,
+                                type: 'type',
+                                originalName: typeName,
+                                isVisible: true,
+                                children: [], // Cấp 3 không có con
+                            }))
+                        };
+                    })
+            };
+        });
 
     // Lưu lại cây vừa tạo để lần sau không cần tạo lại
     await updateNavigation(generatedNav);
     return generatedNav;
 };
+
 
 /**
  * Cập nhật cấu trúc menu điều hướng (header).
@@ -194,10 +208,11 @@ const updateNavigation = async (navData) => {
     const settings = await Setting.findOneAndUpdate(
         { singletonKey: "main_settings" },
         { $set: { headerNav: navData } },
-        { new: true, upsert: true } // upsert: tạo mới nếu chưa tồn tại
+        { new: true, upsert: true }
     );
     return settings.headerNav;
 };
+
 const updateGroupOrderInCategory = async (categoryName, orderedGroups) => {
     const settings = await getSettings(); // Dùng lại hàm getSettings để đảm bảo có document settings
 
