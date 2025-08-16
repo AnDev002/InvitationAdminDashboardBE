@@ -1,3 +1,5 @@
+// AdminBE/controllers/invitationTemplate.controller.js
+
 const mongoose = require('mongoose');
 const InvitationTemplate = require('../models/invitationTemplate.model');
 const invitationTemplateService = require('../services/invitationTemplate.service');
@@ -85,7 +87,19 @@ const getTemplateById = async (req, res, next) => {
 
 const createTemplate = async (req, res, next) => {
     try {
-        const parsedTemplateData = JSON.parse(req.body.templateData);
+        // SỬA LỖI: Kiểm tra req.body.templateData trước khi parse
+        let parsedTemplateData;
+        if (typeof req.body.templateData === 'string') {
+            try {
+                parsedTemplateData = JSON.parse(req.body.templateData);
+            } catch (e) {
+                return res.status(400).json({ message: 'Dữ liệu templateData không phải là JSON hợp lệ.' });
+            }
+        } else {
+            // Nếu không phải string, giả định nó là object (dù multer thường gửi string)
+            parsedTemplateData = req.body.templateData || {};
+        }
+
         const newTemplatePayload = {
             ...req.body,
             templateData: parsedTemplateData,
