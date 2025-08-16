@@ -3,7 +3,7 @@ const mongoose = require('mongoose'); // Thêm dòng này để kiểm tra Objec
 const sharp = require('sharp');
 const { uploadFileToR2 } = require('../services/r2.service.js'); // Đảm bảo bạn đã export hàm này
 const _ = require('lodash'); // Thư viện tiện ích giúp set giá trị cho object lồng nhau
-const AppError = require('../../utils/AppError');
+const AppError = require('../utils/AppError');
 
 // === Controllers cho các hành động cần xác thực ===
 
