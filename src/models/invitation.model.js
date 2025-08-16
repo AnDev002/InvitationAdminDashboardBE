@@ -108,7 +108,7 @@ const invitationSchema = new mongoose.Schema({
         ],
         invitationType: { 
             type: String, 
-            enum: ['Thiệp cưới', 'Thiệp sinh nhật', 'Thiệp sự kiện chung'], 
+            enum: ['Thiệp cưới', 'Thiệp sinh nhật', 'Thiệp sự kiện chung', 'Thiệp cảm ơn'], 
             default: 'Thiệp cưới' 
         },
         eventDescription: { 
