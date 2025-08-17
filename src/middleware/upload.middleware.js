@@ -8,12 +8,14 @@ const storage = multer.memoryStorage();
 
 // Lọc file, chỉ cho phép upload ảnh
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/')) {
+  if (file.mimetype.startsWith('image/') || 
+      ['font/ttf', 'font/otf', 'font/woff', 'font/woff2', 'application/font-woff', 'application/x-font-truetype', 'application/x-font-opentype'].includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Not an image! Please upload only images.'), false);
+    cb(new Error('File không hợp lệ! Vui lòng chỉ tải lên ảnh hoặc font chữ.'), false);
   }
 };
+
 // ++ THAY ĐỔI: Tăng giới hạn file size để cho phép upload ảnh nội dung trang ++
 export const upload = multer({
   storage: storage,
