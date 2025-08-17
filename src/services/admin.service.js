@@ -104,7 +104,10 @@ const updateSettings = async (settingsData) => {
         // Mark the footer as modified if it was part of the update.
         // This can sometimes be necessary to let Mongoose know a mixed-type object has changed.
         if (settingsData.footer) {
-           settings.markModified('footer');
+            settings.markModified('footer');
+        }
+        if (settingsData.loveGiftsButton) {
+            settings.markModified('loveGiftsButton');
         }
     }
 
