@@ -10,6 +10,7 @@ const templateController = require('../controllers/invitationTemplate.controller
 const userController = require('../controllers/user.controller');
 // --- THÊM MỚI: Import page routes ---
 const pageRoutes = require('./page.routes'); 
+const fontRoutes = require('./font.routes');
 const designAssetRoutes = require('./designAsset.routes');
 const { upload, resizeImage, uploadImageToR2 } = require('../middleware/upload.middleware');
 const { validateProduct } = require('../utils/validators');
@@ -79,6 +80,7 @@ router.delete('/templates/:id', authorize('admin', 'designer'), templateControll
 
 // --- THÊM MỚI: Gắn các route quản lý trang vào đây ---
 router.use('/pages', authorize('admin', 'marketing'), pageRoutes);
+router.use('/fonts', authorize('admin', 'designer'), fontRoutes);
 
 // === Settings & SEO ===
 router.get('/settings', authorize('admin', 'marketing'), adminController.getSettings);
