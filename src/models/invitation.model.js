@@ -125,7 +125,18 @@ const invitationSchema = new mongoose.Schema({
         contactBride: { type: String, default: '08xxxxxxxx' },
         musicUrl: { type: String, default: '' },
         videoUrl: { type: String, default: '' },
-        qrCodeImageUrls: [{ type: String }] 
+        qrCodes: [
+            {
+                title: {
+                    type: String,
+                    trim: true,
+                },
+                url: {
+                    type: String,
+                    trim: true,
+                },
+            },
+        ],
     },
     // MỚI: Mảng để lưu trữ các nhóm khách mời tùy chỉnh cho thiệp này
     guestGroups: [guestGroupSchema],
