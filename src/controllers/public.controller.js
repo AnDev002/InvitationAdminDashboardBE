@@ -9,7 +9,8 @@ exports.getPublicSettings = async (req, res, next) => {
             headerNav: settings.headerNav,
             theme: settings.theme,
             footer: settings.footer,
-            banners: settings.banners
+            banners: settings.banners,
+            loveGiftsButton: settings.loveGiftsButton
         };
         res.status(200).json({
             status: 'success',
