@@ -5,16 +5,29 @@ import { uploadFileToR2 } from '../services/r2.service.js';
 
 // Cấu hình multer để lưu file trong memory
 const storage = multer.memoryStorage();
+const FONT_MIME_TYPES = [
+    'font/ttf',
+    'font/otf',
+    'font/woff',
+    'font/woff2',
+    'application/font-woff',
+    'application/font-woff2',
+    'application/x-font-truetype',
+    'application/x-font-opentype',
+    'application/vnd.ms-fontobject', // Dành cho .eot
+    'application/font-sfnt',
+    'application/octet-stream' // Kiểu nhị phân chung, thường được dùng làm dự phòng
+];
 
-// Lọc file, chỉ cho phép upload ảnh
+// Lọc file, cho phép upload ảnh HOẶC FONT
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/') || 
-      ['font/ttf', 'font/otf', 'font/woff', 'font/woff2', 'application/font-woff', 'application/x-font-truetype', 'application/x-font-opentype'].includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error('File không hợp lệ! Vui lòng chỉ tải lên ảnh hoặc font chữ.'), false);
-  }
+    if (file.mimetype.startsWith('image/') || FONT_MIME_TYPES.includes(file.mimetype)) {
+        cb(null, true);
+    } else {
+        cb(new Error('File không hợp lệ! Vui lòng chỉ tải lên ảnh hoặc font chữ.'), false);
+    }
 };
+
 
 // ++ THAY ĐỔI: Tăng giới hạn file size để cho phép upload ảnh nội dung trang ++
 export const upload = multer({
