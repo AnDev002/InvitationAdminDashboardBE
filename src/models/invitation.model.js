@@ -127,7 +127,7 @@ const invitationSchema = new mongoose.Schema({
         videoUrl: { type: String, default: '' },
         qrCodes: [
             {
-                title: {
+                title: { // <-- THÊM DÒNG NÀY
                     type: String,
                     trim: true,
                 },

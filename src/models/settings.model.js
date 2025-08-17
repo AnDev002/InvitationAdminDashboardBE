@@ -35,7 +35,7 @@ const footerColumnSchema = new mongoose.Schema({
 
 const settingsSchema = new mongoose.Schema({
     singletonKey: { type: String, default: "main_settings", unique: true },
-    livePreviewUrl: { type: String, default: "https://baotrithangmay.vn" },
+    livePreviewUrl: { type: String, default: "https://icards.com.vn" },
     headerNav: [navItemSchema],
     theme: {
         primaryColor: String,
@@ -68,7 +68,20 @@ const settingsSchema = new mongoose.Schema({
         socialLinks: [socialLinkSchema],
         columns: [footerColumnSchema]
     },
-
+    loveGiftsButton: {
+        url: {
+            type: String,
+            default: 'https://lovegifts.vn'
+        },
+        text: {
+            type: String,
+            default: 'Gửi quà mừng cưới'
+        },
+        isEnabled: {
+            type: Boolean,
+            default: false
+        }
+    },
     seo: {
         pages: {
             home: {
