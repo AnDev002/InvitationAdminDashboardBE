@@ -14,7 +14,7 @@ const userRoutes = require('./src/routes/user.routes');
 const invitationTemplateRoutes = require('./src/routes/invitationTemplate.routes');
 const publicRoutes = require('./src/routes/public.routes');
 const pageRoutes = require('./src/routes/page.routes');
-const fontRoutes = require('./font.routes');
+const fontRoutes = require('./src/routes/font.routes');
 require('./src/config/passport');
 dotenv.config();
 const app = express();
