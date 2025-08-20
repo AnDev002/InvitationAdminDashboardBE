@@ -100,7 +100,6 @@ const updateSettings = async (settingsData) => {
                 settings.footer.legalLinks = settingsData.footer.legalLinks;
             }
         }
-
         
         if (settingsData.headerNav) {
             settings.headerNav = settingsData.headerNav;
