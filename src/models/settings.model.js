@@ -33,6 +33,12 @@ const footerColumnSchema = new mongoose.Schema({
     links: [footerLinkSchema]
 }, { _id: false });
 
+const footerSchema = new mongoose.Schema({
+    socialLinks: [socialLinkSchema],
+    columns: [footerColumnSchema],
+    legalLinks: [footerLinkSchema] 
+}, { _id: false });
+
 const settingsSchema = new mongoose.Schema({
     singletonKey: { type: String, default: "main_settings", unique: true },
     livePreviewUrl: { type: String, default: "https://icards.com.vn" },
@@ -64,10 +70,7 @@ const settingsSchema = new mongoose.Schema({
         invitations: { imageUrl: String, title: String, subtitle: String },
         shop: { imageUrl: String, title: String, subtitle: String },
     },
-    footer: {
-        socialLinks: [socialLinkSchema],
-        columns: [footerColumnSchema]
-    },
+    footer: footerSchema,
     loveGiftsButton: {
         url: {
             type: String,

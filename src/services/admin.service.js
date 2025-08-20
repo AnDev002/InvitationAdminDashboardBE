@@ -96,7 +96,11 @@ const updateSettings = async (settingsData) => {
             if (settingsData.footer.columns) {
                 settings.footer.columns = settingsData.footer.columns;
             }
+            if (settingsData.footer.legalLinks) {
+                settings.footer.legalLinks = settingsData.footer.legalLinks;
+            }
         }
+
         
         if (settingsData.headerNav) {
             settings.headerNav = settingsData.headerNav;
