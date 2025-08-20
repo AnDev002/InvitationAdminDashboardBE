@@ -83,7 +83,6 @@ const processContentImages = async (contentBlocks) => {
 
 exports.getPages = async (req, res, next) => {
     try {
-        // ++ THÊM MỚI: Xử lý query params
         const query = {};
         if (req.query.isBlog) {
             query.isBlog = req.query.isBlog === 'true';
@@ -91,10 +90,15 @@ exports.getPages = async (req, res, next) => {
         if (req.query.isPublished) {
             query.isPublished = req.query.isPublished === 'true';
         }
-        const pages = await pageService.getAllPages(query); // Truyền query vào service
+        
+        const pages = await pageService.getAllPages(query); 
+        
         res.status(200).json({ status: 'success', data: pages });
-    } catch (error) { next(error); }
+    } catch (error) { 
+        next(error); 
+    }
 };
+
 
 exports.getPage = async (req, res, next) => {
     try {
