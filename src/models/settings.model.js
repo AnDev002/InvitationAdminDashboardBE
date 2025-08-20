@@ -36,16 +36,7 @@ const footerColumnSchema = new mongoose.Schema({
 const footerSchema = new mongoose.Schema({
     socialLinks: [socialLinkSchema],
     columns: [footerColumnSchema],
-    legalLinks: [footerLinkSchema],
-    textContent: { type: footerTextContentSchema, default: () => ({}) }
-}, { _id: false });
-
-const footerTextContentSchema = new mongoose.Schema({
-    title: { type: String, default: 'iCards.com.vn: Nền Tảng Thiết Kế Thiệp Online Đẳng Cấp' },
-    blocks: [{
-        headline: String,
-        body: String
-    }]
+    legalLinks: [footerLinkSchema] 
 }, { _id: false });
 
 const settingsSchema = new mongoose.Schema({
