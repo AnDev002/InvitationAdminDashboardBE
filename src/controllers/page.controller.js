@@ -83,7 +83,15 @@ const processContentImages = async (contentBlocks) => {
 
 exports.getPages = async (req, res, next) => {
     try {
-        const pages = await pageService.getAllPages();
+        // ++ THÊM MỚI: Xử lý query params
+        const query = {};
+        if (req.query.isBlog) {
+            query.isBlog = req.query.isBlog === 'true';
+        }
+        if (req.query.isPublished) {
+            query.isPublished = req.query.isPublished === 'true';
+        }
+        const pages = await pageService.getAllPages(query); // Truyền query vào service
         res.status(200).json({ status: 'success', data: pages });
     } catch (error) { next(error); }
 };
@@ -115,6 +123,10 @@ exports.createPage = async (req, res, next) => {
         if (pageData.seo && typeof pageData.seo === 'string') {
             pageData.seo = JSON.parse(pageData.seo);
         }
+        // ++ THÊM MỚI: Chuyển đổi isBlog sang boolean
+        if (pageData.isBlog) {
+            pageData.isBlog = pageData.isBlog === 'true';
+        }
 
         const newPage = await pageService.createPage({ ...pageData, author: req.user.id });
         res.status(201).json({ status: 'success', data: newPage });
@@ -140,6 +152,11 @@ exports.updatePage = async (req, res, next) => {
         // Parse SEO data
         if (pageData.seo && typeof pageData.seo === 'string') {
             pageData.seo = JSON.parse(pageData.seo);
+        }
+
+        // ++ THÊM MỚI: Chuyển đổi isBlog sang boolean
+        if (pageData.isBlog) {
+            pageData.isBlog = pageData.isBlog === 'true';
         }
 
         const updatedPage = await pageService.updatePage(req.params.id, pageData);

@@ -32,10 +32,14 @@ const pageSchema = new mongoose.Schema({
         trim: true,
         lowercase: true,
     },
-    // ++ THAY ĐỔI: Sử dụng content schema mới
     content: {
         type: [contentBlockSchema],
         default: [],
+    },
+    isBlog: { 
+        type: Boolean,
+        default: false,
+        index: true,
     },
     seo: {
         metaTitle: { type: String, trim: true },

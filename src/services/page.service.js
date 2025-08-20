@@ -5,7 +5,7 @@ const Page = require('../models/page.model');
 // Mongoose sẽ tự động xử lý việc lưu trữ cấu trúc mảng này.
 // Không cần thay đổi gì ở đây.
 
-const getAllPages = () => Page.find().sort({ createdAt: -1 });
+const getAllPages = (query = {}) => Page.find(query).sort({ createdAt: -1 }); // ++ CẬP NHẬT: Nhận query
 const getPageById = (id) => Page.findById(id);
 const getPageBySlug = (slug) => Page.findOne({ slug, isPublished: true });
 const createPage = (pageData) => Page.create(pageData);
