@@ -71,20 +71,6 @@ const settingsSchema = new mongoose.Schema({
         shop: { imageUrl: String, title: String, subtitle: String },
     },
     footer: footerSchema,
-    loveGiftsButton: {
-        url: {
-            type: String,
-            default: 'https://lovegifts.vn'
-        },
-        text: {
-            type: String,
-            default: 'Gửi quà mừng cưới'
-        },
-        isEnabled: {
-            type: Boolean,
-            default: false
-        }
-    },
     seo: {
         pages: {
             home: {

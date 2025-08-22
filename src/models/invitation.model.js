@@ -137,6 +137,20 @@ const invitationSchema = new mongoose.Schema({
                 },
             },
         ],
+        loveGiftsButton: {
+            url: {
+                type: String,
+                default: 'https://lovegifts.vn'
+            },
+            text: {
+                type: String,
+                default: 'Gửi quà mừng cưới'
+            },
+            isEnabled: {
+                type: Boolean,
+                default: false
+            }
+        },
     },
     // MỚI: Mảng để lưu trữ các nhóm khách mời tùy chỉnh cho thiệp này
     guestGroups: [guestGroupSchema],

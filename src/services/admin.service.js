@@ -84,7 +84,6 @@ const updateSettings = async (settingsData) => {
         // For plain nested objects (not arrays of documents), merge is safe.
         settings.theme = _.merge(settings.theme || {}, settingsData.theme);
         settings.banners = _.merge(settings.banners || {}, settingsData.banners);
-        settings.loveGiftsButton = _.merge(settings.loveGiftsButton || {}, settingsData.loveGiftsButton);
 
         // For arrays of sub-documents, DIRECTLY REPLACE the array.
         // This is the key fix. It tells Mongoose to process the new array
@@ -109,9 +108,6 @@ const updateSettings = async (settingsData) => {
         // This can sometimes be necessary to let Mongoose know a mixed-type object has changed.
         if (settingsData.footer) {
             settings.markModified('footer');
-        }
-        if (settingsData.loveGiftsButton) {
-            settings.markModified('loveGiftsButton');
         }
     }
 
