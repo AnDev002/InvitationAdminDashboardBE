@@ -87,6 +87,7 @@ const getTemplateById = async (req, res, next) => {
 
 const createTemplate = async (req, res, next) => {
     try {
+        // SỬA LỖI: Kiểm tra req.body.templateData trước khi parse
         let parsedTemplateData;
         if (typeof req.body.templateData === 'string') {
             try {
@@ -95,26 +96,13 @@ const createTemplate = async (req, res, next) => {
                 return res.status(400).json({ message: 'Dữ liệu templateData không phải là JSON hợp lệ.' });
             }
         } else {
+            // Nếu không phải string, giả định nó là object (dù multer thường gửi string)
             parsedTemplateData = req.body.templateData || {};
         }
-
-        // --- BẮT ĐẦU THAY ĐỔI: Xử lý loveGiftsButton ---
-        let parsedLoveGiftsButton = null;
-        if (req.body.loveGiftsButton && typeof req.body.loveGiftsButton === 'string') {
-            try {
-                // Parse chuỗi JSON từ frontend thành object
-                parsedLoveGiftsButton = JSON.parse(req.body.loveGiftsButton);
-            } catch (e) {
-                console.error("Lỗi parse loveGiftsButton khi tạo mới:", e);
-                // Nếu lỗi, không gán giá trị để Mongoose sử dụng default
-            }
-        }
-        // --- KẾT THÚC THAY ĐỔI ---
 
         const newTemplatePayload = {
             ...req.body,
             templateData: parsedTemplateData,
-            loveGiftsButton: parsedLoveGiftsButton, // Gán giá trị đã xử lý
         };
 
         if (req.file && req.file.r2Url) {
@@ -123,6 +111,7 @@ const createTemplate = async (req, res, next) => {
             return res.status(400).json({ message: 'Ảnh đại diện là bắt buộc khi tạo mẫu mới.' });
         }
         
+        // THÊM: Xử lý nội dung mô tả để tìm và upload ảnh
         newTemplatePayload.description = await processContentImages(req.body.description);
 
         const newTemplate = await invitationTemplateService.createTemplate(newTemplatePayload);
@@ -136,31 +125,15 @@ const createTemplate = async (req, res, next) => {
 const updateTemplate = async (req, res, next) => {
     try {
         const parsedTemplateData = JSON.parse(req.body.templateData);
-
-        // --- BẮT ĐẦU THAY ĐỔI: Xử lý loveGiftsButton ---
-        let parsedLoveGiftsButton = null;
-        // Kiểm tra xem loveGiftsButton có được gửi lên không
-        if (req.body.loveGiftsButton && typeof req.body.loveGiftsButton === 'string') {
-             try {
-                // Parse chuỗi JSON từ frontend thành object
-                parsedLoveGiftsButton = JSON.parse(req.body.loveGiftsButton);
-            } catch (e) {
-                console.error("Lỗi parse loveGiftsButton khi cập nhật:", e);
-                 // Nếu lỗi, không gán giá trị để không ghi đè giá trị cũ
-            }
-        }
-        // --- KẾT THÚC THAY ĐỔI ---
-
         const updateData = {
             ...req.body,
             templateData: parsedTemplateData,
-            loveGiftsButton: parsedLoveGiftsButton, // Gán giá trị đã xử lý
         };
-
         if (req.file && req.file.r2Url) {
             updateData.imgSrc = req.file.r2Url;
         }
         
+        // THÊM: Xử lý nội dung mô tả để tìm và upload ảnh
         updateData.description = await processContentImages(req.body.description);
 
         if (req.body.displayOrder) {
