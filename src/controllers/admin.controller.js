@@ -17,12 +17,16 @@ exports.getDashboardData = async (req, res, next) => {
 };
 
 // Settings
-exports.getSettings = async (req, res, next) => {
+exports.getSettings = async (req, res) => {
     try {
-        const settings = await adminService.getSettings();
-        res.status(200).json(settings);
+        let settings = await Settings.findOne();
+        if (!settings) {
+            settings = new Settings();
+            await settings.save();
+        }
+        res.json(settings);
     } catch (error) {
-        next(error);
+        res.status(500).json({ message: error.message });
     }
 };
 

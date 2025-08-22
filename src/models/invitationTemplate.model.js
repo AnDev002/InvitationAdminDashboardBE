@@ -17,6 +17,14 @@ const invitationTemplateSchema = new mongoose.Schema({
         type: Boolean, 
         default: true 
     },
+    loveGiftsButton: {
+        type: {
+            text: String,
+            link: String,
+            isEnabled: Boolean
+        },
+        default: null
+    },
 });
 
 const InvitationTemplate = mongoose.model('InvitationTemplate', invitationTemplateSchema);
