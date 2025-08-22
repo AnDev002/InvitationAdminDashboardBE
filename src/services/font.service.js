@@ -15,8 +15,16 @@ const deleteFontById = async (id) => {
     await Font.findByIdAndDelete(id);
 };
 
+const bulkCreateFonts = async (fontsData) => {
+    if (!fontsData || fontsData.length === 0) {
+        return [];
+    }
+    return await Font.insertMany(fontsData, { ordered: false });
+};
+
 module.exports = {
     getAllFonts,
     createFont,
     deleteFontById,
+    bulkCreateFonts
 };

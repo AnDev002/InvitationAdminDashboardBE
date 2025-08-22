@@ -29,12 +29,16 @@ const fileFilter = (req, file, cb) => {
 };
 
 
-// ++ THAY ĐỔI: Tăng giới hạn file size để cho phép upload ảnh nội dung trang ++
+// ++ THAY ĐỔI: Tăng giới hạn file size và số lượng file ++
 export const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
-  limits: { fileSize: 1024 * 1024 * 10 }, // Giới hạn 10MB
+  limits: { 
+      fileSize: 1024 * 1024 * 10, // Giới hạn 10MB mỗi file
+      files: 50 // Giới hạn 50 files mỗi request
+  }, 
 });
+
 
 // Middleware để resize ảnh
 export const resizeImage = async (req, res, next) => {

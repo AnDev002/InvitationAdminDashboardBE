@@ -12,6 +12,8 @@ router.route('/')
     .get(fontController.getFonts)
     .post(upload.single('font'), fontController.createFont);
 
+router.post('/bulk-upload', upload.array('fonts', 50), fontController.bulkCreateFonts);
+
 router.route('/:id')
     .delete(fontController.deleteFont);
 
