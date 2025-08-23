@@ -88,6 +88,7 @@ const getTemplateById = async (req, res, next) => {
 
 const createTemplate = async (req, res, next) => {
     try {
+        // SỬA LỖI: Kiểm tra req.body.templateData trước khi parse
         let parsedTemplateData;
         if (typeof req.body.templateData === 'string') {
             try {
@@ -96,6 +97,7 @@ const createTemplate = async (req, res, next) => {
                 return res.status(400).json({ message: 'Dữ liệu templateData không phải là JSON hợp lệ.' });
             }
         } else {
+            // Nếu không phải string, giả định nó là object (dù multer thường gửi string)
             parsedTemplateData = req.body.templateData || {};
         }
 
@@ -120,6 +122,7 @@ const createTemplate = async (req, res, next) => {
             return res.status(400).json({ message: 'Ảnh đại diện là bắt buộc khi tạo mẫu mới.' });
         }
         
+        // THÊM: Xử lý nội dung mô tả để tìm và upload ảnh
         newTemplatePayload.description = await processContentImages(req.body.description);
 
         const newTemplate = await invitationTemplateService.createTemplate(newTemplatePayload);
@@ -157,13 +160,12 @@ const updateTemplate = async (req, res, next) => {
         const updateData = {
             ...req.body,
             templateData: parsedTemplateData,
-            loveGiftsButton: parsedLoveGiftsButton, // Gán giá trị đã xử lý
         };
-
         if (req.file && req.file.r2Url) {
             updateData.imgSrc = req.file.r2Url;
         }
         
+        // THÊM: Xử lý nội dung mô tả để tìm và upload ảnh
         updateData.description = await processContentImages(req.body.description);
 
         if (req.body.displayOrder) {
