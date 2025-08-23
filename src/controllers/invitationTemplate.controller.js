@@ -2,6 +2,7 @@
 
 const mongoose = require('mongoose');
 const InvitationTemplate = require('../models/invitationTemplate.model');
+const Settings = require('../models/settings.model'); // ĐÃ THÊM: Import model Settings
 const invitationTemplateService = require('../services/invitationTemplate.service');
 const APIFeatures = require('../utils/apiFeature');
 const sharp = require('sharp');
@@ -98,23 +99,19 @@ const createTemplate = async (req, res, next) => {
             parsedTemplateData = req.body.templateData || {};
         }
 
-        // --- BẮT ĐẦU THAY ĐỔI: Xử lý loveGiftsButton ---
         let parsedLoveGiftsButton = null;
         if (req.body.loveGiftsButton && typeof req.body.loveGiftsButton === 'string') {
             try {
-                // Parse chuỗi JSON từ frontend thành object
                 parsedLoveGiftsButton = JSON.parse(req.body.loveGiftsButton);
             } catch (e) {
                 console.error("Lỗi parse loveGiftsButton khi tạo mới:", e);
-                // Nếu lỗi, không gán giá trị để Mongoose sử dụng default
             }
         }
-        // --- KẾT THÚC THAY ĐỔI ---
 
         const newTemplatePayload = {
             ...req.body,
             templateData: parsedTemplateData,
-            loveGiftsButton: parsedLoveGiftsButton, // Gán giá trị đã xử lý
+            loveGiftsButton: parsedLoveGiftsButton,
         };
 
         if (req.file && req.file.r2Url) {
@@ -137,19 +134,25 @@ const updateTemplate = async (req, res, next) => {
     try {
         const parsedTemplateData = JSON.parse(req.body.templateData);
 
-        // --- BẮT ĐẦU THAY ĐỔI: Xử lý loveGiftsButton ---
+        // --- BẮT ĐẦU SỬA LỖI ---
         let parsedLoveGiftsButton = null;
-        // Kiểm tra xem loveGiftsButton có được gửi lên không
-        if (req.body.loveGiftsButton && typeof req.body.loveGiftsButton === 'string') {
-             try {
-                // Parse chuỗi JSON từ frontend thành object
+
+        // Ưu tiên lấy setting chung từ DB
+        const loveGiftButtonSetting = await Settings.findOne({ key: 'loveGiftButton' });
+        if (loveGiftButtonSetting && loveGiftButtonSetting.value) {
+            parsedLoveGiftsButton = {
+                title: loveGiftButtonSetting.value.title,
+                url: loveGiftButtonSetting.value.url
+            };
+        } else if (req.body.loveGiftsButton && typeof req.body.loveGiftsButton === 'string') {
+            // Nếu không có setting chung, thì dùng logic parse của bạn
+            try {
                 parsedLoveGiftsButton = JSON.parse(req.body.loveGiftsButton);
             } catch (e) {
                 console.error("Lỗi parse loveGiftsButton khi cập nhật:", e);
-                 // Nếu lỗi, không gán giá trị để không ghi đè giá trị cũ
             }
         }
-        // --- KẾT THÚC THAY ĐỔI ---
+        // --- KẾT THÚC SỬA LỖI ---
 
         const updateData = {
             ...req.body,
@@ -181,7 +184,6 @@ const updateTemplate = async (req, res, next) => {
     }
 };
 
-// HÀM MỚI
 const deleteTemplate = async (req, res, next) => {
     try {
         await invitationTemplateService.deleteTemplateById(req.params.id);
@@ -190,9 +192,6 @@ const deleteTemplate = async (req, res, next) => {
         next(error);
     }
 };
-
-
-
 
 const seedTemplates = async (req, res, next) => {
     // ... (giữ nguyên hàm seed)
@@ -210,12 +209,10 @@ const getTemplateCategories = async (req, res, next) => {
     }
 };
 
-// ++ BẮT ĐẦU THÊM MỚI ++
 const getTemplateTypesForCategory = async (req, res, next) => {
     try {
         const { category, group } = req.query;
         let types = [];
-        // Chỉ fetch khi có đủ thông tin cần thiết
         if (category && group) {
             types = await invitationTemplateService.getUniqueTypesForCategoryAndGroup(category, group);
         } else if (category) {
@@ -231,17 +228,13 @@ const getTemplateTypesForCategory = async (req, res, next) => {
     }
 };
 
-
-// ++ KẾT THÚC THÊM MỚI ++
-
 const bulkCreateTemplates = async (req, res, next) => {
     try {
-        const templatesToCreate = req.body.templates; // Nhận mảng templates từ frontend
+        const templatesToCreate = req.body.templates;
         if (!templatesToCreate || !Array.isArray(templatesToCreate)) {
             return res.status(400).json({ message: 'Dữ liệu gửi lên không hợp lệ.' });
         }
 
-        // Gán dữ liệu mặc định cho các mẫu thiệp
         const defaultTemplateData = { width: 800, height: 600, pages: [] };
         const defaultImgSrc = 'https://placehold.co/400x300/e0e0e0/777?text=Chưa+thiết+kế';
 
@@ -259,27 +252,24 @@ const bulkCreateTemplates = async (req, res, next) => {
             data: result,
         });
     } catch (error) {
-        // Xử lý lỗi trùng lặp key (ví dụ: title)
         if (error.code === 11000) {
              res.status(409).json({
-                message: `Thêm mới thất bại. Có ${error.writeErrors.length} lỗi, có thể do trùng tiêu đề mẫu.`,
-                errors: error.writeErrors.map(e => `Mẫu '${e.op.title}' bị lỗi: ${e.errmsg}`),
-            });
+                 message: `Thêm mới thất bại. Có ${error.writeErrors.length} lỗi, có thể do trùng tiêu đề mẫu.`,
+                 errors: error.writeErrors.map(e => `Mẫu '${e.op.title}' bị lỗi: ${e.errmsg}`),
+             });
         } else {
              next(error);
         }
     }
 };
 
-// ++ HÀM MỚI ++
 const incrementView = async (req, res, next) => {
   try {
     await invitationTemplateService.incrementTemplateView(req.params.id);
     res.status(200).json({ success: true, message: 'View counted.' });
   } catch (error) {
-    // Không cần gửi lỗi về client vì đây là hành động nền
     console.error(`Could not count view for template ${req.params.id}:`, error);
-    res.status(200).json({ success: false }); // Vẫn trả về 200
+    res.status(200).json({ success: false });
   }
 };
 
@@ -304,7 +294,7 @@ module.exports = {
     deleteTemplate,
     seedTemplates,
     getTemplateCategories,
-    getTemplateTypesForCategory, // ++ THÊM MỚI ++
+    getTemplateTypesForCategory,
     bulkCreateTemplates,
     incrementView,
     getTemplateGroups,
