@@ -4,6 +4,7 @@ const adminService = require('../services/admin.service');
 const _ = require('lodash');
 const sharp = require('sharp');
 const { uploadFileToR2 } = require('../services/r2.service');
+const Settings = require('../models/settings.model');
 
 // Dashboard
 exports.getDashboardData = async (req, res, next) => {
