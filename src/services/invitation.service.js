@@ -477,13 +477,12 @@ const sendInvitationEmailToGuest = async (invitationId, guestId, userId) => {
  * @returns {Promise<Document|null>} Thiệp mời và thông tin khách mời.
  */
 const getPublicInvitationById = async (invitationId, guestId = null) => {
-    // Kiểm tra ID hợp lệ trước khi query
     if (!mongoose.Types.ObjectId.isValid(invitationId)) {
         throw new Error('ID thiệp mời không hợp lệ.');
     }
 
-    // Lấy toàn bộ dữ liệu thiệp mời
-    const invitation = await Invitation.findById(invitationId);
+    // THAY ĐỔI: Thêm .populate('template') để lấy dữ liệu từ template
+    const invitation = await Invitation.findById(invitationId).populate('template');
 
     if (!invitation) {
         return null;
@@ -493,25 +492,24 @@ const getPublicInvitationById = async (invitationId, guestId = null) => {
     if (guestId && mongoose.Types.ObjectId.isValid(guestId)) {
         const guest = invitation.guests.id(guestId);
         if (guest) {
-            // <<< SỬA LỖI TẠI ĐÂY: Thêm _id vào đối tượng guestDetails >>>
-            // Chuyển Mongoose document thành một object JavaScript thông thường
-            // để đảm bảo tất cả các thuộc tính (bao gồm cả _id) được gửi đi.
             guestDetails = guest.toObject(); 
         }
     }
-
-    // Trả về tất cả dữ liệu cần thiết cho trang công khai
+    
+    // TRẢ VỀ DỮ LIỆU ĐẦY ĐỦ BAO GỒM CẢ TEMPLATE
     const publicInvitationData = {
         _id: invitation._id,
         slug: invitation.slug,
         settings: invitation.settings,
         content: invitation.content,
         design: invitation.design,
-        guestDetails: guestDetails, // Sẽ là null nếu không có guestId hoặc guestId không hợp lệ
+        guestDetails: guestDetails,
+        template: invitation.template, // <-- THÊM DÒNG NÀY
     };
 
     return publicInvitationData;
 };
+
 
 /**
  * Cập nhật trạng thái tham dự (RSVP) cho một khách mời cụ thể.

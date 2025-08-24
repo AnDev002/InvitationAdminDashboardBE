@@ -134,30 +134,22 @@ const updateTemplate = async (req, res, next) => {
     try {
         const parsedTemplateData = JSON.parse(req.body.templateData);
 
-        // --- BẮT ĐẦU SỬA LỖI ---
+        // --- SỬA LỖI LOGIC TẠI ĐÂY ---
         let parsedLoveGiftsButton = null;
 
-        // Ưu tiên lấy setting chung từ DB
-        const loveGiftButtonSetting = await Settings.findOne({ key: 'loveGiftButton' });
-        if (loveGiftButtonSetting && loveGiftButtonSetting.value) {
-            parsedLoveGiftsButton = {
-                title: loveGiftButtonSetting.value.title,
-                url: loveGiftButtonSetting.value.url
-            };
-        } else if (req.body.loveGiftsButton && typeof req.body.loveGiftsButton === 'string') {
-            // Nếu không có setting chung, thì dùng logic parse của bạn
+        // Luôn ưu tiên dữ liệu gửi lên từ form admin cho template cụ thể này
+        if (req.body.loveGiftsButton && typeof req.body.loveGiftsButton === 'string') {
             try {
                 parsedLoveGiftsButton = JSON.parse(req.body.loveGiftsButton);
             } catch (e) {
                 console.error("Lỗi parse loveGiftsButton khi cập nhật:", e);
             }
         }
-        // --- KẾT THÚC SỬA LỖI ---
 
         const updateData = {
             ...req.body,
             templateData: parsedTemplateData,
-            loveGiftsButton: parsedLoveGiftsButton, // Gán giá trị đã xử lý
+            loveGiftsButton: parsedLoveGiftsButton,
         };
 
         if (req.file && req.file.r2Url) {
