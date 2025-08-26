@@ -8,6 +8,8 @@ const { protect, authorize } = require('../middleware/auth.middleware');
 // Bảo vệ tất cả các route bên dưới
 router.use(protect, authorize('admin', 'designer'));
 
+router.get('/', fontController.getPublicFonts);
+
 router.route('/')
     .get(fontController.getFonts)
     .post(upload.single('font'), fontController.createFont);

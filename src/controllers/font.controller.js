@@ -2,6 +2,15 @@
 const fontService = require('../services/font.service');
 const { uploadFileToR2 } = require('../services/r2.service');
 
+exports.getPublicFonts = async (req, res, next) => {
+    try {
+        const fonts = await Font.find({ isActive: true }).select('name url category').sort({ name: 1 });
+        res.status(200).json({ status: 'success', data: fonts });
+    } catch (error) {
+        next(error);
+    }
+};
+
 exports.getFonts = async (req, res, next) => {
     try {
         const fonts = await fontService.getAllFonts();
