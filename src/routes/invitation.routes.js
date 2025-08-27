@@ -48,13 +48,14 @@ router.use(protect);
 
 // CRUD cho thiệp mời của người dùng
 router.route('/')
-    .post(validateInvitation, invitationController.createInvitation) // Thêm validateInvitation
+    .post(upload.any(), validateInvitation, invitationController.createInvitation) // Thêm upload.any()
     .get(invitationController.getMyInvitations);
 
 router.route('/:id')
     .get(param('id').isMongoId().withMessage('ID thiệp mời không hợp lệ.'), invitationController.getInvitation)
     .put(
         param('id').isMongoId().withMessage('ID thiệp mời không hợp lệ.'),
+        upload.any(),
         validateInvitationUpdate, 
         invitationController.updateInvitation
     )

@@ -10,12 +10,27 @@ const AppError = require('../utils/AppError');
 // Tạo thiệp mới
 const createInvitation = async (req, res, next) => {
     try {
-        const userId = req.user._id;
-        const { templateId, slug, content, design, settings } = req.body;
+        const contentData = JSON.parse(req.body.content || '[]');
 
+        if (req.files && req.files.length > 0) {
+            const fileMap = new Map(req.files.map(f => [f.fieldname, f]));
+
+            for (const page of contentData) {
+                const bgFile = fileMap.get(`background_${page.id}`);
+                if (bgFile && page.backgroundImage.startsWith('__FILE_PLACEHOLDER_BG_')) {
+                    const processedBuffer = await sharp(bgFile.buffer).webp({ quality: 85 }).toBuffer();
+                    const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
+                    page.backgroundImage = url;
+                }
+            }
+        }
+
+        const userId = req.user._id;
+        const { templateId, slug, design, settings } = req.body;
         const newInvitation = await invitationService.createInvitationFromTemplate(
-            userId, templateId, slug, content, design, settings
+            userId, templateId, slug, contentData, design, settings
         );
+
         res.status(201).json({
             status: 'success',
             message: 'Thiệp mời đã được tạo thành công!',
@@ -72,9 +87,24 @@ const getInvitation = async (req, res, next) => {
 // Cập nhật thiệp
 const updateInvitation = async (req, res, next) => {
     try {
+        const updateData = req.body;
+        const contentData = JSON.parse(updateData.content || '[]');
+
+        if (req.files && req.files.length > 0) {
+            const fileMap = new Map(req.files.map(f => [f.fieldname, f]));
+
+            for (const page of contentData) {
+                const bgFile = fileMap.get(`background_${page.id}`);
+                if (bgFile && page.backgroundImage.startsWith('__FILE_PLACEHOLDER_BG_')) {
+                    const processedBuffer = await sharp(bgFile.buffer).webp({ quality: 85 }).toBuffer();
+                    const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
+                    page.backgroundImage = url;
+                }
+            }
+        }
+        updateData.content = contentData;
         const userId = req.user._id;
         const invitationId = req.params.id;
-        const updateData = req.body;
 
         // Validation by param('id').isMongoId() and validateInvitation middleware
 
