@@ -4,7 +4,7 @@ import { randomBytes } from 'crypto';
 import { r2 } from '../config/r2.config.js';
 
 const BUCKET_NAME = process.env.BUCKET_NAME;
-const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL;
+const R2_PUBLIC_URL = "https://r2.icards.com.vn";
 
 /**
  * Upload một file lên Cloudflare R2.

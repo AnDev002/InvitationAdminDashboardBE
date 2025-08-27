@@ -1,4 +1,5 @@
 const InvitationTemplate = require('../models/invitationTemplate.model');
+const { uploadFileToR2 } = require('./r2.service'); 
 
 const queryInvitationTemplates = (filter) => {
   return InvitationTemplate.find({ ...filter }).sort({ displayOrder: 1, createdAt: -1 });
@@ -15,12 +16,69 @@ const createTemplate = async (templateData) => {
 };
 
 // HÀM MỚI
-const updateTemplateById = async (id, updateData) => {
-  return await InvitationTemplate.findByIdAndUpdate(id, updateData, {
-    new: true,
-    runValidators: true,
-  });
+const updateTemplateById = async (id, updateData, files = []) => {
+    const template = await InvitationTemplate.findById(id);
+    if (!template) {
+        throw new Error('Không tìm thấy mẫu thiệp để cập nhật.');
+    }
+
+    // 1. Gán các trường dữ liệu văn bản vào document Mongoose
+    template.title = updateData.title;
+    template.category = updateData.category;
+    template.group = updateData.group;
+    template.type = updateData.type;
+    template.description = updateData.description;
+    template.isActive = updateData.isActive;
+    template.loveGiftsButton = updateData.loveGiftsButton;
+    
+    const templateDataObject = updateData.templateData;
+
+    // 2. Xử lý file upload nếu có
+    if (files && files.length > 0) {
+        console.log(`[Service] Nhận được ${files.length} file để xử lý.`);
+        const fileUrlMap = new Map();
+
+        // Tải song song tất cả file lên R2
+        await Promise.all(
+            files.map(async (file) => {
+                const result = await uploadFileToR2(file.buffer, file.mimetype);
+                console.log(`[Service] Đã tải lên file ${file.fieldname}, URL: ${result.url}`);
+                fileUrlMap.set(file.fieldname, result.url);
+            })
+        );
+
+        // 3. Cập nhật URL ảnh đại diện nếu có
+        if (fileUrlMap.has('image')) {
+            template.imgSrc = fileUrlMap.get('image');
+            console.log(`[Service] Đã cập nhật ảnh đại diện.`);
+        }
+
+        // 4. Duyệt qua các trang và thay thế placeholder của ảnh nền
+        if (templateDataObject.pages && Array.isArray(templateDataObject.pages)) {
+            templateDataObject.pages.forEach(page => {
+                const placeholderPrefix = '__FILE_PLACEHOLDER_';
+                if (page.backgroundImage && typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith(placeholderPrefix)) {
+                    const fileKey = page.backgroundImage.replace(placeholderPrefix, '').replace('__', '');
+                    console.log(`[Service] Tìm thấy placeholder cho key: ${fileKey}`);
+                    if (fileUrlMap.has(fileKey)) {
+                        page.backgroundImage = fileUrlMap.get(fileKey);
+                        console.log(`[Service] Đã thay thế placeholder bằng URL: ${page.backgroundImage}`);
+                    }
+                }
+            });
+        }
+    }
+
+    // 5. Gán đối tượng templateData đã được cập nhật đầy đủ vào document
+    template.templateData = templateDataObject;
+    
+    // 6. Lưu tất cả thay đổi vào database
+    await template.save();
+    console.log('[Service] Đã lưu template vào DB thành công.');
+    return template;
 };
+
+
 
 // HÀM MỚI
 const deleteTemplateById = async (id) => {

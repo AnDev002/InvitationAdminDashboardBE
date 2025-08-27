@@ -132,49 +132,40 @@ const createTemplate = async (req, res, next) => {
 
 const updateTemplate = async (req, res, next) => {
     try {
-        const parsedTemplateData = JSON.parse(req.body.templateData);
+        // Log kiểu dữ liệu để debug
+        console.log('Received templateData type:', typeof req.body.templateData);
 
-        // --- SỬA LỖI LOGIC TẠI ĐÂY ---
-        let parsedLoveGiftsButton = null;
-
-        // Luôn ưu tiên dữ liệu gửi lên từ form admin cho template cụ thể này
-        if (req.body.loveGiftsButton && typeof req.body.loveGiftsButton === 'string') {
-            try {
-                parsedLoveGiftsButton = JSON.parse(req.body.loveGiftsButton);
-            } catch (e) {
-                console.error("Lỗi parse loveGiftsButton khi cập nhật:", e);
-            }
+        // Kiểm tra xem templateData có phải là string không trước khi parse
+        if (typeof req.body.templateData !== 'string') {
+            throw new Error('templateData phải là một chuỗi JSON.');
         }
 
-        const updateData = {
+        const updatePayload = {
             ...req.body,
-            templateData: parsedTemplateData,
-            loveGiftsButton: parsedLoveGiftsButton,
+            // Parse các trường JSON một cách an toàn
+            templateData: JSON.parse(req.body.templateData),
+            loveGiftsButton: req.body.loveGiftsButton ? JSON.parse(req.body.loveGiftsButton) : null,
         };
-
-        if (req.file && req.file.r2Url) {
-            updateData.imgSrc = req.file.r2Url;
-        }
-        
-        updateData.description = await processContentImages(req.body.description);
-
-        if (req.body.displayOrder) {
-            updateData.displayOrder = req.body.displayOrder;
-        }
 
         const updatedTemplate = await invitationTemplateService.updateTemplateById(
             req.params.id,
-            updateData
+            updatePayload, // Dữ liệu đã được parse
+            req.files      // Tất cả các file từ multer
         );
+
         if (!updatedTemplate) {
             return res.status(404).json({ message: 'Không tìm thấy mẫu thiệp.' });
         }
         res.status(200).json({ status: 'success', data: updatedTemplate });
+
     } catch (error) {
-        console.error("Error Body:", req.body);
+        console.error("Lỗi xảy ra trong controller updateTemplate:", error);
+        console.error("Error Body nhận được:", req.body); // Log lại body khi có lỗi
         next(error);
     }
 };
+
+
 
 const deleteTemplate = async (req, res, next) => {
     try {

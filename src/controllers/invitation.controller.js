@@ -84,6 +84,38 @@ const getInvitation = async (req, res, next) => {
 };
 
 
+const updateInvitationBackground = catchAsync(async (req, res, next) => {
+  // 1. Kiểm tra xem có file nào được tải lên không
+  if (!req.file) {
+    return next(new AppError('Vui lòng tải lên một file ảnh.', 400));
+  }
+
+  const { id } = req.params;
+  const file = req.file;
+
+  // 2. Tải file lên R2 storage và nhận lại URL
+  const imageUrl = await r2Service.uploadFile({
+    file,
+    path: `invitations/${id}/backgrounds`, // Tạo một thư mục riêng để lưu ảnh background
+  });
+
+  // 3. Cập nhật đường dẫn ảnh mới vào document invitation
+  const updatedInvitation = await invitationService.updateInvitationById(id, {
+    background: imageUrl,
+  });
+
+  if (!updatedInvitation) {
+    return next(new AppError('Không tìm thấy thiệp mời.', 404));
+  }
+
+  // 4. Trả về kết quả thành công
+  res.status(200).json({
+    status: 'success',
+    data: {
+      invitation: updatedInvitation,
+    },
+  });
+});
 // Cập nhật thiệp
 const updateInvitation = async (req, res, next) => {
     try {
@@ -582,4 +614,5 @@ module.exports = {
     sendInvitationEmailToGuest,
     getPublicInvitationById,
     submitRsvp,
+    updateInvitationBackground,
 };

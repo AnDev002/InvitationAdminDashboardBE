@@ -75,7 +75,7 @@ router.post('/templates/reorder', authorize('admin', 'marketing', 'designer'), t
 
 // ROUTE ĐỘNG (KHÁI QUÁT) ĐƯỢC ĐẶT Ở SAU CÙNG
 router.get('/templates/:id', authorize('admin', 'designer'), templateController.getTemplateById); // Route này phải nằm sau các route tĩnh ở trên
-router.put('/templates/:id', authorize('admin', 'designer'), upload.single('image'), resizeImage, uploadImageToR2, templateController.updateTemplate);
+router.put('/templates/:id', authorize('admin', 'designer'), upload.any(), resizeImage, uploadImageToR2, templateController.updateTemplate);
 router.delete('/templates/:id', authorize('admin', 'designer'), templateController.deleteTemplate);
 
 // --- THÊM MỚI: Gắn các route quản lý trang vào đây ---

@@ -42,7 +42,11 @@ router.post(
     invitationController.addWish
 );
 
-
+router.patch(
+  '/:id/background',
+  upload.single('background'),
+  invitationController.updateInvitationBackground
+);
 // === Các Route cần xác thực (bảo vệ) ===
 router.use(protect);
 
