@@ -70,3 +70,22 @@ exports.updateSettings = async (req, res, next) => {
         next(error);
     }
 };
+
+exports.updateInvitationTemplatePreview = catchAsync(async (req, res, next) => {
+  const template = await InvitationTemplate.findByIdAndUpdate(
+    req.params.id,
+    { previewDetails: req.body },
+    { new: true, runValidators: true }
+  );
+
+  if (!template) {
+    return next(new AppError('Không tìm thấy mẫu thiệp với ID này', 404));
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      template,
+    },
+  });
+});

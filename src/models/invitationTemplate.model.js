@@ -6,8 +6,10 @@ const invitationTemplateSchema = new mongoose.Schema({
     type: { type: String, required: true },
     title: { type: String, required: true, unique: true },
     imgSrc: { type: String, required: true },
+    slug: { type: String, unique: true },
     description: { type: String, default: '' },
     templateData: { type: mongoose.Schema.Types.Mixed },
+    previewDetails: { type: Object, default: null },
     views: { type: Number, default: 0 },
     displayOrder: { 
         type: Number, 
@@ -25,6 +27,16 @@ const invitationTemplateSchema = new mongoose.Schema({
         },
         default: null
     },
+});
+
+invitationTemplateSchema.pre('save', function(next) {
+    if (this.isModified('title')) {
+        this.slug = this.title
+            .toLowerCase()
+            .replace(/ /g, '-')
+            .replace(/[^\w-]+/g, '');
+    }
+    next();
 });
 
 const InvitationTemplate = mongoose.model('InvitationTemplate', invitationTemplateSchema);

@@ -20,3 +20,18 @@ exports.getPublicSettings = async (req, res, next) => {
         next(error);
     }
 };
+
+exports.getInvitationTemplateBySlug = catchAsync(async (req, res, next) => {
+  const template = await InvitationTemplate.findOne({ slug: req.params.slug });
+
+  if (!template) {
+    return next(new AppError('Không tìm thấy mẫu thiệp.', 404));
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      template,
+    },
+  });
+});
