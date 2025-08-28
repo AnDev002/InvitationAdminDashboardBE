@@ -23,7 +23,7 @@ const updateTemplateById = async (id, updateData, files = []) => {
         throw new Error('Không tìm thấy mẫu thiệp để cập nhật.');
     }
 
-    // 1. Gán các trường dữ liệu văn bản vào document Mongoose
+    // 1. Gán các trường dữ liệu văn bản và JSON vào document
     template.title = updateData.title;
     template.category = updateData.category;
     template.group = updateData.group;
@@ -32,22 +32,21 @@ const updateTemplateById = async (id, updateData, files = []) => {
     template.isActive = updateData.isActive;
     template.loveGiftsButton = updateData.loveGiftsButton;
     
+    // Lấy object templateData từ payload đã được parse
     const templateDataObject = updateData.templateData;
-const settingsObject = templateDataObject.settings || {};
 
-    // --- PHẦN LOGIC CẦN THÊM BẮT ĐẦU TỪ ĐÂY ---
+    // 2. Xử lý tất cả các file được tải lên (bao gồm cả ảnh nền canvas)
     if (files && files.length > 0) {
         const fileUrlMap = new Map();
         const uploadPromises = files.map(async (file) => {
-            // Xử lý và tải file (ví dụ: resize, chuyển đổi định dạng)
             const processedBuffer = await sharp(file.buffer)
                 .resize({ width: 1920, fit: 'inside', withoutEnlargement: true })
                 .webp({ quality: 85 })
                 .toBuffer();
             const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
-            
+
             // Map tên trường của file với URL đã tải lên
-            // Ví dụ: file.fieldname là 'eventImages' hoặc 'groomImageUrl'
+            // Fieldname có thể là 'background_uuid-abc-123', 'eventImages', 'groomImageUrl', ...
             if (!fileUrlMap.has(file.fieldname)) {
                 fileUrlMap.set(file.fieldname, []);
             }
@@ -55,7 +54,19 @@ const settingsObject = templateDataObject.settings || {};
         });
         await Promise.all(uploadPromises);
 
-        // Hàm thay thế placeholder cho các mảng đối tượng (events, participants, ...)
+        // **LOGIC XỬ LÝ ẢNH NỀN CANVAS (QUAN TRỌNG NHẤT)**
+        if (templateDataObject.pages && Array.isArray(templateDataObject.pages)) {
+            templateDataObject.pages.forEach(page => {
+                const fieldName = `background_${page.id}`;
+                if (fileUrlMap.has(fieldName)) {
+                    // Nếu có file ảnh nền cho trang này, cập nhật URL
+                    page.backgroundImage = fileUrlMap.get(fieldName)[0];
+                }
+            });
+        }
+        
+        // **Xử lý các file ảnh khác trong `settings` (giữ nguyên logic cũ)**
+        const settingsObject = templateDataObject.settings || {};
         const replacePlaceholdersInArray = (arr, fieldName, imageKey) => {
             if (Array.isArray(arr) && fileUrlMap.has(imageKey)) {
                 let urlIndex = 0;
@@ -73,18 +84,14 @@ const settingsObject = templateDataObject.settings || {};
             return arr;
         };
 
-        // Thay thế URL cho các ảnh đơn
         if (fileUrlMap.has('groomImageUrl')) settingsObject.groomImageUrl = fileUrlMap.get('groomImageUrl')[0];
         if (fileUrlMap.has('brideImageUrl')) settingsObject.brideImageUrl = fileUrlMap.get('brideImageUrl')[0];
-        // ... thêm cho các ảnh đơn khác ...
-
-        // Thay thế placeholder cho các mảng ảnh
+        
         settingsObject.events = replacePlaceholdersInArray(settingsObject.events, 'imageUrl', 'eventImages');
         settingsObject.participants = replacePlaceholdersInArray(settingsObject.participants, 'imageUrl', 'participantImages');
         settingsObject.loveStory = replacePlaceholdersInArray(settingsObject.loveStory, 'imageUrl', 'loveStoryImages');
         settingsObject.qrCodes = replacePlaceholdersInArray(settingsObject.qrCodes, 'url', 'qrCodeImageUrls');
 
-        // Xử lý các mảng chỉ chứa URL như gallery và banners
         if (fileUrlMap.has('galleryImages')) {
             settingsObject.galleryImages = [
                 ...(settingsObject.galleryImages || []).filter(img => !String(img).startsWith('__FILE_PLACEHOLDER_')),
@@ -93,19 +100,23 @@ const settingsObject = templateDataObject.settings || {};
         }
         if (fileUrlMap.has('bannerImages')) {
             settingsObject.bannerImages = [
-                ...(settingsObject.bannerImages || []).filter(item => item.url), // Giữ lại các URL cũ
-                ...fileUrlMap.get('bannerImages').map(url => ({ id: url, url })) // Thêm các URL mới
+                ...(settingsObject.bannerImages || []).filter(item => item.url),
+                ...fileUrlMap.get('bannerImages').map(url => ({ id: url, url }))
             ];
         }
+
+        templateDataObject.settings = settingsObject;
     }
-    // --- KẾT THÚC PHẦN LOGIC CẦN THÊM ---
+    
+    // 3. Cập nhật toàn bộ templateData và đánh dấu là đã sửa đổi
+    template.templateData = templateDataObject;
+    template.markModified('templateData');
 
-    template.templateData.settings = settingsObject;
-    template.markModified('templateData'); // Đánh dấu để Mongoose biết đã thay đổi
-
+    // 4. Lưu lại vào cơ sở dữ liệu
     await template.save();
     return template;
 };
+
 
 
 

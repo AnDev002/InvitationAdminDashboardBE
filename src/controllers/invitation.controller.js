@@ -58,22 +58,20 @@ const createInvitation = async (req, res, next) => {
                     .toBuffer();
                 const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
                 
-                // --- BẮT ĐẦU SỬA ĐỔI ---
-                // Thay thế dấu "__" bằng "." để tái tạo đường dẫn
-                const path = file.fieldname.replace(/__/g, '.');
-
-                // Xử lý đặc biệt cho ảnh nền canvas với fieldname mới
-                if (path.startsWith('background.page_')) {
-                    const pageId = path.split('page_')[1];
+                // --- SỬA LỖI TẠI ĐÂY ---
+                // Sửa lại logic để xử lý đúng fieldname 'background_<page_id>'
+                if (file.fieldname.startsWith('background_')) {
+                    const pageId = file.fieldname.split('_')[1];
                     const pageIndex = contentData.findIndex(p => p.id === pageId);
                     if (pageIndex !== -1) {
                         contentData[pageIndex].backgroundImage = url;
                     }
                 } else {
-                    // Cập nhật URL vào đúng vị trí trong settingsData
+                    // Giữ nguyên logic xử lý các file khác trong settings
+                    const path = file.fieldname.replace(/__/g, '.');
                     _.set(settingsData, path, url);
                 }
-                // --- KẾT THÚC SỬA ĐỔI ---
+                // --- KẾT THÚC SỬA LỖI ---
             }));
         }
 
@@ -96,6 +94,7 @@ const createInvitation = async (req, res, next) => {
         next(error);
     }
 };
+
 
 
 

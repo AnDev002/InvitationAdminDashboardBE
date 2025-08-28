@@ -88,47 +88,65 @@ const getTemplateById = async (req, res, next) => {
 
 const createTemplate = async (req, res, next) => {
     try {
-        let parsedTemplateData;
-        if (typeof req.body.templateData === 'string') {
-            try {
-                parsedTemplateData = JSON.parse(req.body.templateData);
-            } catch (e) {
-                return res.status(400).json({ message: 'Dữ liệu templateData không phải là JSON hợp lệ.' });
-            }
-        } else {
-            parsedTemplateData = req.body.templateData || {};
-        }
-
-        let parsedLoveGiftsButton = null;
-        if (req.body.loveGiftsButton && typeof req.body.loveGiftsButton === 'string') {
-            try {
-                parsedLoveGiftsButton = JSON.parse(req.body.loveGiftsButton);
-            } catch (e) {
-                console.error("Lỗi parse loveGiftsButton khi tạo mới:", e);
-            }
-        }
-
+        const parsedTemplateData = JSON.parse(req.body.templateData || '{}');
+        const parsedLoveGiftsButton = req.body.loveGiftsButton ? JSON.parse(req.body.loveGiftsButton) : null;
+        
         const newTemplatePayload = {
             ...req.body,
             templateData: parsedTemplateData,
             loveGiftsButton: parsedLoveGiftsButton,
         };
 
-        if (req.file && req.file.r2Url) {
-            newTemplatePayload.imgSrc = req.file.r2Url;
-        } else if (!req.body.id) {
+        // Xử lý tất cả các file được gửi lên
+        if (req.files && req.files.length > 0) {
+            const uploadPromises = req.files.map(async (file) => {
+                const processedBuffer = await sharp(file.buffer)
+                    .resize({ width: 800, fit: 'inside', withoutEnlargement: true })
+                    .webp({ quality: 90 })
+                    .toBuffer();
+                const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
+                return { fieldname: file.fieldname, url: url };
+            });
+
+            const uploadedFiles = await Promise.all(uploadPromises);
+
+            uploadedFiles.forEach(uploadedFile => {
+                // Gán URL cho ảnh đại diện (thumbnail)
+                if (uploadedFile.fieldname === 'image') {
+                    newTemplatePayload.imgSrc = uploadedFile.url;
+                } 
+                // Gán URL cho các ảnh nền canvas
+                else if (uploadedFile.fieldname.startsWith('background_')) {
+                    const pageId = uploadedFile.fieldname.split('_')[1];
+                    const pageIndex = newTemplatePayload.templateData.pages.findIndex(p => p.id === pageId);
+                    if (pageIndex !== -1) {
+                        newTemplatePayload.templateData.pages[pageIndex].backgroundImage = uploadedFile.url;
+                    }
+                }
+            });
+        }
+
+        if (!newTemplatePayload.imgSrc) {
             return res.status(400).json({ message: 'Ảnh đại diện là bắt buộc khi tạo mẫu mới.' });
         }
-        
-        newTemplatePayload.description = await processContentImages(req.body.description);
+
+        // Xử lý ảnh base64 trong phần mô tả (nếu có)
+        newTemplatePayload.description = await processContentImages(req.body.description || '');
 
         const newTemplate = await invitationTemplateService.createTemplate(newTemplatePayload);
         res.status(201).json({ status: 'success', data: newTemplate });
     } catch (error) {
-        console.error("Error Body:", req.body);
+        console.error("Error creating template:", error);
+        if (error instanceof SyntaxError) {
+             return res.status(400).json({ message: 'Dữ liệu templateData hoặc loveGiftsButton không phải là JSON hợp lệ.' });
+        }
+        if (error.code === 11000) {
+            return res.status(409).json({ message: 'Tên mẫu thiệp đã tồn tại.'});
+        }
         next(error);
     }
 };
+
 
 const updateTemplate = async (req, res, next) => {
     try {

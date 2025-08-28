@@ -70,7 +70,7 @@ router.get('/templates/categories', authorize('admin', 'marketing', 'designer'),
 router.get('/templates/types', authorize('admin', 'marketing', 'designer'), templateController.getTemplateTypesForCategory);
 router.get('/templates/groups', authorize('admin', 'marketing', 'designer'), templateController.getTemplateGroups); // Route này phải nằm ở đây
 router.post('/templates/bulk-import', authorize('admin', 'marketing', 'designer'), templateController.bulkCreateTemplates);
-router.post('/templates', authorize('admin', 'marketing', 'designer'), upload.single('image'), resizeImage, uploadImageToR2, templateController.createTemplate);
+router.post('/templates', authorize('admin', 'marketing', 'designer'), upload.any(), templateController.createTemplate);
 router.post('/templates/reorder', authorize('admin', 'marketing', 'designer'), templateController.reorderTemplates);
 
 // ROUTE ĐỘNG (KHÁI QUÁT) ĐƯỢC ĐẶT Ở SAU CÙNG
