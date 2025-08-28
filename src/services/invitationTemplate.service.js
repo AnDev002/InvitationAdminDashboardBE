@@ -1,5 +1,6 @@
 const InvitationTemplate = require('../models/invitationTemplate.model');
 const { uploadFileToR2 } = require('./r2.service'); 
+const sharp = require('sharp');
 
 const queryInvitationTemplates = (filter) => {
   return InvitationTemplate.find({ ...filter }).sort({ displayOrder: 1, createdAt: -1 });
@@ -32,49 +33,77 @@ const updateTemplateById = async (id, updateData, files = []) => {
     template.loveGiftsButton = updateData.loveGiftsButton;
     
     const templateDataObject = updateData.templateData;
+const settingsObject = templateDataObject.settings || {};
 
-    // 2. Xử lý file upload nếu có
+    // --- PHẦN LOGIC CẦN THÊM BẮT ĐẦU TỪ ĐÂY ---
     if (files && files.length > 0) {
-        console.log(`[Service] Nhận được ${files.length} file để xử lý.`);
         const fileUrlMap = new Map();
+        const uploadPromises = files.map(async (file) => {
+            // Xử lý và tải file (ví dụ: resize, chuyển đổi định dạng)
+            const processedBuffer = await sharp(file.buffer)
+                .resize({ width: 1920, fit: 'inside', withoutEnlargement: true })
+                .webp({ quality: 85 })
+                .toBuffer();
+            const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
+            
+            // Map tên trường của file với URL đã tải lên
+            // Ví dụ: file.fieldname là 'eventImages' hoặc 'groomImageUrl'
+            if (!fileUrlMap.has(file.fieldname)) {
+                fileUrlMap.set(file.fieldname, []);
+            }
+            fileUrlMap.get(file.fieldname).push(url);
+        });
+        await Promise.all(uploadPromises);
 
-        // Tải song song tất cả file lên R2
-        await Promise.all(
-            files.map(async (file) => {
-                const result = await uploadFileToR2(file.buffer, file.mimetype);
-                console.log(`[Service] Đã tải lên file ${file.fieldname}, URL: ${result.url}`);
-                fileUrlMap.set(file.fieldname, result.url);
-            })
-        );
-
-        // 3. Cập nhật URL ảnh đại diện nếu có
-        if (fileUrlMap.has('image')) {
-            template.imgSrc = fileUrlMap.get('image');
-            console.log(`[Service] Đã cập nhật ảnh đại diện.`);
-        }
-
-        // 4. Duyệt qua các trang và thay thế placeholder của ảnh nền
-        if (templateDataObject.pages && Array.isArray(templateDataObject.pages)) {
-            templateDataObject.pages.forEach(page => {
-                const placeholderPrefix = '__FILE_PLACEHOLDER_';
-                if (page.backgroundImage && typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith(placeholderPrefix)) {
-                    const fileKey = page.backgroundImage.replace(placeholderPrefix, '').replace('__', '');
-                    console.log(`[Service] Tìm thấy placeholder cho key: ${fileKey}`);
-                    if (fileUrlMap.has(fileKey)) {
-                        page.backgroundImage = fileUrlMap.get(fileKey);
-                        console.log(`[Service] Đã thay thế placeholder bằng URL: ${page.backgroundImage}`);
+        // Hàm thay thế placeholder cho các mảng đối tượng (events, participants, ...)
+        const replacePlaceholdersInArray = (arr, fieldName, imageKey) => {
+            if (Array.isArray(arr) && fileUrlMap.has(imageKey)) {
+                let urlIndex = 0;
+                return arr.map(item => {
+                    if (item[fieldName] && String(item[fieldName]).startsWith('__FILE_PLACEHOLDER_')) {
+                        const newUrl = fileUrlMap.get(imageKey)[urlIndex];
+                        if (newUrl) {
+                            urlIndex++;
+                            return { ...item, [fieldName]: newUrl };
+                        }
                     }
-                }
-            });
+                    return item;
+                });
+            }
+            return arr;
+        };
+
+        // Thay thế URL cho các ảnh đơn
+        if (fileUrlMap.has('groomImageUrl')) settingsObject.groomImageUrl = fileUrlMap.get('groomImageUrl')[0];
+        if (fileUrlMap.has('brideImageUrl')) settingsObject.brideImageUrl = fileUrlMap.get('brideImageUrl')[0];
+        // ... thêm cho các ảnh đơn khác ...
+
+        // Thay thế placeholder cho các mảng ảnh
+        settingsObject.events = replacePlaceholdersInArray(settingsObject.events, 'imageUrl', 'eventImages');
+        settingsObject.participants = replacePlaceholdersInArray(settingsObject.participants, 'imageUrl', 'participantImages');
+        settingsObject.loveStory = replacePlaceholdersInArray(settingsObject.loveStory, 'imageUrl', 'loveStoryImages');
+        settingsObject.qrCodes = replacePlaceholdersInArray(settingsObject.qrCodes, 'url', 'qrCodeImageUrls');
+
+        // Xử lý các mảng chỉ chứa URL như gallery và banners
+        if (fileUrlMap.has('galleryImages')) {
+            settingsObject.galleryImages = [
+                ...(settingsObject.galleryImages || []).filter(img => !String(img).startsWith('__FILE_PLACEHOLDER_')),
+                ...fileUrlMap.get('galleryImages')
+            ];
+        }
+        if (fileUrlMap.has('bannerImages')) {
+            settingsObject.bannerImages = [
+                ...(settingsObject.bannerImages || []).filter(item => item.url), // Giữ lại các URL cũ
+                ...fileUrlMap.get('bannerImages').map(url => ({ id: url, url })) // Thêm các URL mới
+            ];
         }
     }
+    // --- KẾT THÚC PHẦN LOGIC CẦN THÊM ---
 
-    // 5. Gán đối tượng templateData đã được cập nhật đầy đủ vào document
-    template.templateData = templateDataObject;
-    
-    // 6. Lưu tất cả thay đổi vào database
+    template.templateData.settings = settingsObject;
+    template.markModified('templateData'); // Đánh dấu để Mongoose biết đã thay đổi
+
     await template.save();
-    console.log('[Service] Đã lưu template vào DB thành công.');
     return template;
 };
 
