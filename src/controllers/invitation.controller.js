@@ -93,13 +93,15 @@ const updateInvitation = async (req, res, next) => {
             // 2a. Xử lý ảnh nền cho từng trang (canvas background)
             for (const page of contentData) {
                 const bgFileKey = `background_${page.id}`;
-                if (fileMap.has(bgFileKey) && page.backgroundImage.startsWith('__FILE_PLACEHOLDER_BG_')) {
+                // SỬA LỖI: Thay đổi chuỗi placeholder để khớp với frontend
+                if (fileMap.has(bgFileKey) && page.backgroundImage.startsWith('__FILE_PLACEHOLDER_background_')) { 
                     const bgFile = fileMap.get(bgFileKey);
                     const processedBuffer = await sharp(bgFile.buffer).webp({ quality: 85 }).toBuffer();
                     const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
                     page.backgroundImage = url;
                 }
             }
+
             
             // 2b. Xử lý tất cả các ảnh trong Event Settings
             const singleImageUpdates = {};
