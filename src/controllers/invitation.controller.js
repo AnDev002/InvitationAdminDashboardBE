@@ -50,7 +50,6 @@ const createInvitation = async (req, res, next) => {
         let settingsData = JSON.parse(req.body.settings || '{}');
         const files = req.files || [];
 
-        // Xử lý song song tất cả các file tải lên
         if (files.length > 0) {
             await Promise.all(files.map(async (file) => {
                 const processedBuffer = await sharp(file.buffer)
@@ -59,12 +58,11 @@ const createInvitation = async (req, res, next) => {
                     .toBuffer();
                 const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
                 
-                // Thay thế dấu "__" bằng "." để tái tạo đường dẫn đối tượng lồng nhau
-                // Ví dụ: 'settings__groomImageUrl' -> 'settings.groomImageUrl'
-                // Ví dụ: 'background__pageId123' -> 'background.pageId123'
+                // --- BẮT ĐẦU SỬA ĐỔI ---
+                // Thay thế dấu "__" bằng "." để tái tạo đường dẫn
                 const path = file.fieldname.replace(/__/g, '.');
 
-                // Xử lý đặc biệt cho ảnh nền canvas
+                // Xử lý đặc biệt cho ảnh nền canvas với fieldname mới
                 if (path.startsWith('background.page_')) {
                     const pageId = path.split('page_')[1];
                     const pageIndex = contentData.findIndex(p => p.id === pageId);
@@ -72,9 +70,10 @@ const createInvitation = async (req, res, next) => {
                         contentData[pageIndex].backgroundImage = url;
                     }
                 } else {
-                    // Cập nhật đường dẫn URL vào đúng vị trí trong settingsData
+                    // Cập nhật URL vào đúng vị trí trong settingsData
                     _.set(settingsData, path, url);
                 }
+                // --- KẾT THÚC SỬA ĐỔI ---
             }));
         }
 
@@ -97,6 +96,7 @@ const createInvitation = async (req, res, next) => {
         next(error);
     }
 };
+
 
 
 const updateInvitation = async (req, res, next) => {
