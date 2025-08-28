@@ -76,7 +76,7 @@ const getTemplateById = async (req, res, next) => {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
             return res.status(400).json({ message: 'ID mẫu thiệp không hợp lệ.' });
         }
-        const template = await invitationTemplateService.getTemplateById(req.params.id);
+        const template = await invitationTemplateService.getTemplateById(req.params.id); //
         if (!template) {
             return res.status(404).json({ message: 'Không tìm thấy mẫu thiệp.' });
         }

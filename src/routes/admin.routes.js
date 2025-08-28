@@ -14,7 +14,6 @@ const fontRoutes = require('./font.routes');
 const designAssetRoutes = require('./designAsset.routes');
 const { upload, resizeImage, uploadImageToR2 } = require('../middleware/upload.middleware');
 const { validateProduct } = require('../utils/validators');
-const { isAuthenticated, isAdmin } = require('../middleware/isAuthenticated');
 
 
 router.use(protect);
@@ -87,10 +86,5 @@ router.use('/fonts', authorize('admin', 'designer'), fontRoutes);
 router.get('/settings', authorize('admin', 'marketing'), adminController.getSettings);
 router.put('/settings', authorize('admin', 'marketing'), upload.any(), adminController.updateSettings);
 
-router.put(
-    '/invitation-templates/:id/preview',
-    authorize('admin', 'designer'),
-    adminController.updateInvitationTemplatePreview
-);
 
 module.exports = router;

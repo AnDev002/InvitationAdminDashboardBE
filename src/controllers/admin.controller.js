@@ -4,7 +4,6 @@ const adminService = require('../services/admin.service');
 const _ = require('lodash');
 const sharp = require('sharp');
 const { uploadFileToR2 } = require('../services/r2.service');
-const Settings = require('../models/settings.model');
 
 // Dashboard
 exports.getDashboardData = async (req, res, next) => {
@@ -18,16 +17,12 @@ exports.getDashboardData = async (req, res, next) => {
 };
 
 // Settings
-exports.getSettings = async (req, res) => {
+exports.getSettings = async (req, res, next) => {
     try {
-        let settings = await Settings.findOne();
-        if (!settings) {
-            settings = new Settings();
-            await settings.save();
-        }
-        res.json(settings);
+        const settings = await adminService.getSettings();
+        res.status(200).json(settings);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        next(error);
     }
 };
 
@@ -70,22 +65,3 @@ exports.updateSettings = async (req, res, next) => {
         next(error);
     }
 };
-
-exports.updateInvitationTemplatePreview = catchAsync(async (req, res, next) => {
-  const template = await InvitationTemplate.findByIdAndUpdate(
-    req.params.id,
-    { previewDetails: req.body },
-    { new: true, runValidators: true }
-  );
-
-  if (!template) {
-    return next(new AppError('Không tìm thấy mẫu thiệp với ID này', 404));
-  }
-
-  res.status(200).json({
-    status: 'success',
-    data: {
-      template,
-    },
-  });
-});
