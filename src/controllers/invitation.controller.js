@@ -75,21 +75,85 @@ const createInvitation = async (req, res, next) => {
 
 const updateInvitation = async (req, res, next) => {
     try {
-        const updateData = req.body;
-        let contentData = JSON.parse(updateData.content || '[]');
-        
-        // Xử lý file cho content
-        if (req.files && req.files.length > 0) {
-            contentData = await handleUploadedFiles(contentData, req.files);
-        }
-        updateData.content = contentData;
-        
         const userId = req.user._id;
         const invitationId = req.params.id;
+        const updateData = req.body;
+        
+        // --- BẮT ĐẦU SỬA LỖI & KẾT HỢP LOGIC ---
 
+        // 1. Parse các dữ liệu dạng chuỗi JSON từ form-data
+        const contentData = JSON.parse(updateData.content || '[]');
+        let settingsUpdate = JSON.parse(updateData.settings || '{}');
+        const designUpdate = JSON.parse(updateData.design || '{}');
+
+        // 2. Xử lý tất cả các file ảnh được tải lên (nếu có)
+        if (req.files && req.files.length > 0) {
+            const fileMap = new Map(req.files.map(f => [f.fieldname, f]));
+
+            // 2a. Xử lý ảnh nền cho từng trang (canvas background)
+            for (const page of contentData) {
+                const bgFileKey = `background_${page.id}`;
+                if (fileMap.has(bgFileKey) && page.backgroundImage.startsWith('__FILE_PLACEHOLDER_BG_')) {
+                    const bgFile = fileMap.get(bgFileKey);
+                    const processedBuffer = await sharp(bgFile.buffer).webp({ quality: 85 }).toBuffer();
+                    const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
+                    page.backgroundImage = url;
+                }
+            }
+            
+            // 2b. Xử lý tất cả các ảnh trong Event Settings
+            const singleImageUpdates = {};
+            const uploadPromises = req.files.map(async (file) => {
+                // Bỏ qua các file ảnh nền đã xử lý ở trên
+                if (file.fieldname.startsWith('background_')) return;
+
+                const processedBuffer = await sharp(file.buffer)
+                    .resize({ width: 1200, fit: 'inside', withoutEnlargement: true })
+                    .webp({ quality: 85 })
+                    .toBuffer();
+                
+                const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
+                
+                // Xử lý các file ảnh dạng mảng (gallery, banners, events...)
+                if (file.fieldname.endsWith('[]')) {
+                    const key = file.fieldname.slice(0, -2);
+                    if (!singleImageUpdates[key]) singleImageUpdates[key] = [];
+                    singleImageUpdates[key].push(url);
+                } else {
+                    // Xử lý file ảnh đơn, hỗ trợ cả đường dẫn lồng nhau
+                    // Ví dụ: 'heroImages_main' -> 'heroImages.main'
+                    const path = file.fieldname.replace(/_/g, '.');
+                    _.set(singleImageUpdates, path, url);
+                }
+            });
+            await Promise.all(uploadPromises);
+
+            // Gộp các ảnh đã upload vào object settings
+            settingsUpdate = _.merge(settingsUpdate, singleImageUpdates);
+
+            // Gộp các mảng ảnh mới vào mảng ảnh đã có
+            for (const key in singleImageUpdates) {
+                if (Array.isArray(singleImageUpdates[key])) {
+                    if (!Array.isArray(settingsUpdate[key])) settingsUpdate[key] = [];
+                    // Loại bỏ các placeholder và thêm URL thật
+                    settingsUpdate[key] = settingsUpdate[key].filter(item => !item.startsWith || !item.startsWith('__FILE_PLACEHOLDER_'));
+                    settingsUpdate[key].push(...singleImageUpdates[key]);
+                }
+            }
+        }
+        
+        // 3. Gán lại dữ liệu đã được xử lý hoàn chỉnh
+        updateData.content = contentData;
+        updateData.settings = settingsUpdate;
+        updateData.design = designUpdate;
+
+        // 4. Cập nhật vào DB
         const updatedInvitation = await invitationService.updateInvitation(invitationId, userId, updateData);
+        
+        // --- KẾT THÚC SỬA LỖI ---
+
         if (!updatedInvitation) {
-            return next(new AppError('Không tìm thấy thiệp hoặc bạn không có quyền.', 404));
+            return res.status(404).json({ message: 'Không tìm thấy thiệp hoặc bạn không có quyền.' });
         }
         res.status(200).json({
             status: 'success',
@@ -98,11 +162,12 @@ const updateInvitation = async (req, res, next) => {
         });
     } catch (error) {
         if (error.code === 11000) {
-            return next(new AppError('Slug này đã được sử dụng. Vui lòng chọn một slug khác.', 409));
+            return res.status(409).json({ message: 'Slug này đã được sử dụng.' });
         }
         next(error);
     }
 };
+
 
 const updateInvitationSettings = async (req, res, next) => {
     try {
