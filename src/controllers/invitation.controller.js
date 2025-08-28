@@ -171,6 +171,7 @@ const updateInvitation = async (req, res, next) => {
 };
 
 
+
 const updateInvitationSettings = async (req, res, next) => {
     try {
         const userId = req.user._id;
