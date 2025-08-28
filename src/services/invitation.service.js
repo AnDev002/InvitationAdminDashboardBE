@@ -82,14 +82,17 @@ const updateInvitation = async (invitationId, userId, updateData) => {
     if (updateData.slug) allowedUpdates.slug = updateData.slug;
     if (updateData.content) allowedUpdates.content = updateData.content;
     if (updateData.design) allowedUpdates.design = updateData.design;
-    if (updateData.settings) allowedUpdates.settings = updateData.settings;
-
-    return await Invitation.findOneAndUpdate(
-        { _id: invitationId, user: userId },
-        { $set: allowedUpdates },
-        { new: true, runValidators: true }
+    if (updateData.settings) {
+        allowedUpdates.settings = updateData.settings;
+    }
+    const updatedInvitation = await Invitation.findOneAndUpdate(
+        { _id: invitationId, user: userId }, 
+        { $set: allowedUpdates },            
+        { new: true, runValidators: true }  
     );
+    return updatedInvitation;
 };
+
 
 const getInvitationsByUserId = async (userId) => {
     return await Invitation.find({ user: userId }).populate('template', 'title imgSrc');
