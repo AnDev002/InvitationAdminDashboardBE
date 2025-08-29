@@ -189,27 +189,18 @@ const addWishToInvitation = async (invitationId, wishData) => {
 
 // MỚI: Function để cập nhật cài đặt thiệp
 const updateInvitationSettings = async (invitationId, userId, settingsData) => {
-    // SỬA LỖI: Bổ sung tất cả các trường cài đặt mới vào danh sách cho phép
-    const allowedSettings = [
-        'showWishList', 'showGuestList', 'password', 
-        'title', 'description', 'salutationStyle', 'displayStyle', 'emailSubject', 'emailBody',
-        'landingPageUrl', 'eventDate', 'groomName', 'brideName', 'groomInfo', 'brideInfo',
-        'groomImageUrl', 'brideImageUrl', 'heroImages', 'galleryImages', 'contactGroom', 'contactBride'
-    ];
-    const update = {};
-    for (const key of allowedSettings) {
-        // Kiểm tra xem settingsData từ client có chứa key này không
-        if (settingsData[key] !== undefined) {
-            // Nếu có thì thêm vào object để update
-            update[`settings.${key}`] = settingsData[key];
-        }
-    }
+    // Tạo một đối tượng payload để cập nhật toàn bộ trường 'settings'
+    const updatePayload = {
+        settings: settingsData
+    };
 
+    // Tìm và cập nhật invitation dựa trên ID và user ID
+    // Lệnh $set sẽ ghi đè toàn bộ object 'settings' bằng dữ liệu mới nhất
     return await Invitation.findOneAndUpdate(
         { _id: invitationId, user: userId },
-        { $set: update },
+        { $set: updatePayload },
         { new: true, runValidators: true }
-    ).populate('template', 'title imgSrc'); // Populated lại template sau khi cập nhật
+    ).populate('template guests');
 };
 
 

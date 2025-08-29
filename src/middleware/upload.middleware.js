@@ -21,12 +21,25 @@ const FONT_MIME_TYPES = [
 
 // Lọc file, cho phép upload ảnh HOẶC FONT
 const fileFilter = (req, file, cb) => {
-    if (file.mimetype.startsWith('image/') || FONT_MIME_TYPES.includes(file.mimetype)) {
+    const allowedImageMimeTypes = file.mimetype.startsWith('image/');
+    const allowedFontMimeTypes = FONT_MIME_TYPES.includes(file.mimetype);
+    const allowedZipMimeTypes = [
+        'application/zip', 
+        'application/x-zip-compressed', 
+        'multipart/x-zip'
+    ].includes(file.mimetype);
+
+    if (allowedImageMimeTypes || allowedFontMimeTypes || allowedZipMimeTypes) {
         cb(null, true);
     } else {
-        cb(new Error('File không hợp lệ! Vui lòng chỉ tải lên ảnh hoặc font chữ.'), false);
+        if (file.originalname.toLowerCase().endsWith('.zip')) {
+            cb(null, true);
+            return;
+        }
+        cb(new Error('File không hợp lệ! Vui lòng chỉ tải lên ảnh, font chữ hoặc file .zip.'), false);
     }
 };
+
 
 
 // ++ THAY ĐỔI: Tăng giới hạn file size và số lượng file ++
