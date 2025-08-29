@@ -54,6 +54,22 @@ const getInvitationTemplates = async (req, res, next) => {
     }
 };
 
+const calculateItemPosition = (position, itemWidth, itemHeight, canvasWidth, canvasHeight) => {
+    const padding = 20;
+    let x = 0, y = 0;
+    switch (position) {
+        case 'top-center': x = (canvasWidth - itemWidth) / 2; y = padding; break;
+        case 'middle-center': x = (canvasWidth - itemWidth) / 2; y = (canvasHeight - itemHeight) / 2; break;
+        case 'bottom-center': x = (canvasWidth - itemWidth) / 2; y = canvasHeight - itemHeight - padding; break;
+        case 'middle-left': x = padding; y = (canvasHeight - itemHeight) / 2; break;
+        case 'middle-right': x = canvasWidth - itemWidth - padding; y = (canvasHeight - itemHeight) / 2; break;
+        default: x = (canvasWidth - itemWidth) / 2; y = (canvasHeight - itemHeight) / 2;
+    }
+    return { x, y };
+};
+
+
+
 const getTemplateGroups = async (req, res, next) => {
     try {
         const { category } = req.query;
@@ -233,15 +249,16 @@ const getTemplateTypesForCategory = async (req, res, next) => {
 
 const bulkCreateTemplates = async (req, res, next) => {
     try {
-        if (!req.file || req.file.mimetype !== 'application/zip') {
-            return res.status(400).json({ message: 'Vui lòng tải lên một file .zip.' });
+        const allowedMimeTypes = ['application/zip', 'application/x-zip-compressed', 'multipart/x-zip', 'application/octet-stream'];
+        const isFileValid = req.file && (allowedMimeTypes.includes(req.file.mimetype) || req.file.originalname.toLowerCase().endsWith('.zip'));
+        if (!isFileValid) {
+            return res.status(400).json({ message: 'Định dạng file .zip không hợp lệ hoặc không được hỗ trợ.' });
         }
 
         const zip = new AdmZip(req.file.buffer);
         const zipEntries = zip.getEntries();
 
-        // Tìm và đọc file data.xlsx
-        const excelEntry = zipEntries.find(entry => entry.entryName === 'data.xlsx');
+        const excelEntry = zipEntries.find(entry => entry.entryName.toLowerCase() === 'data.xlsx');
         if (!excelEntry) {
             return res.status(400).json({ message: 'Không tìm thấy file data.xlsx trong file zip.' });
         }
@@ -253,92 +270,92 @@ const bulkCreateTemplates = async (req, res, next) => {
             return res.status(400).json({ message: 'File data.xlsx rỗng hoặc không có dữ liệu.' });
         }
 
-        // Tạo một map chứa buffer của tất cả các ảnh trong thư mục /images
         const imageMap = new Map();
         zipEntries.forEach(entry => {
             if (entry.entryName.startsWith('images/') && !entry.isDirectory) {
                 const fileName = entry.entryName.split('/').pop();
-                imageMap.set(fileName, entry.getData());
+                // **SỬA LỖI:** Lưu key dưới dạng chữ thường để dễ dàng tra cứu
+                imageMap.set(fileName.toLowerCase(), entry.getData());
             }
         });
         
         const defaultImgSrc = 'https://placehold.co/400x300/e0e0e0/777?text=Chua+thiet+ke';
 
-        const processedTemplates = await Promise.all(rows.map(async (row, index) => {
-            
-            // Hàm trợ giúp để tìm, xử lý và tải ảnh lên R2
+        const templatesByTitle = rows.reduce((acc, row) => {
+            if (!row.title) return acc;
+            if (!acc[row.title]) acc[row.title] = [];
+            acc[row.title].push(row);
+            return acc;
+        }, {});
+
+        const processedTemplates = await Promise.all(Object.values(templatesByTitle).map(async (templateRows) => {
+            const firstRow = templateRows[0];
+            const canvasWidth = parseInt(firstRow.canvasWidth, 10) || 800;
+            const canvasHeight = parseInt(firstRow.canvasHeight, 10) || 1200;
+
             const uploadImageByName = async (imageName) => {
-                if (!imageName || !imageMap.has(imageName)) return null;
-                const imageBuffer = imageMap.get(imageName);
+                // **SỬA LỖI:** Chuyển tên file sang chữ thường trước khi tra cứu
+                if (!imageName || !imageMap.has(imageName.toLowerCase())) return null;
+                const imageBuffer = imageMap.get(imageName.toLowerCase());
                 const processedBuffer = await sharp(imageBuffer)
-                    .resize({ width: 1200, fit: 'inside', withoutEnlargement: true })
+                    .resize({ width: 1920, fit: 'inside', withoutEnlargement: true })
                     .webp({ quality: 85 })
                     .toBuffer();
                 const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
                 return url;
             };
-
-            const canvasWidth = parseInt(row.canvasWidth, 10) || 800;
-            const canvasHeight = parseInt(row.canvasHeight, 10) || 600;
             
-            const items = [];
-            for (let i = 1; i <= 3; i++) {
-                if (row[`item${i}_type`]) {
-                    const itemWidth = parseInt(row[`item${i}_width`], 10) || (row[`item${i}_type`] === 'text' ? 300 : 150);
-                    const itemHeight = parseInt(row[`item${i}_height`], 10) || (row[`item${i}_type`] === 'text' ? 50 : 150);
-                    const position = calculateItemPosition(row[`item${i}_position`], itemWidth, itemHeight, canvasWidth, canvasHeight);
-
-                    const newItem = {
-                        id: `item_${index}_${i}`,
-                        type: row[`item${i}_type`], x: position.x, y: position.y,
-                        width: itemWidth, height: itemHeight, rotation: 0, opacity: 1,
-                    };
-
-                    if (newItem.type === 'text' && row[`item${i}_content`]) {
-                        newItem.content = row[`item${i}_content`];
-                        newItem.fontFamily = row[`item${i}_font`] || 'Arial';
-                        newItem.fontSize = parseInt(row[`item${i}_fontSize`], 10) || 24;
-                        newItem.color = row[`item${i}_color`] || '#000000';
-                        newItem.textAlign = 'center';
-                        items.push(newItem);
-                    } else if (newItem.type === 'image' && row[`item${i}_imageName`]) {
-                        newItem.url = await uploadImageByName(row[`item${i}_imageName`]);
-                        if (newItem.url) items.push(newItem);
+            const pages = await Promise.all(templateRows.map(async (row, pageIndex) => {
+                const items = [];
+                for (let i = 1; i <= 3; i++) {
+                    if (row[`item${i}_type`]) {
+                        const itemWidth = parseInt(row[`item${i}_width`], 10) || (row[`item${i}_type`] === 'text' ? 300 : 150);
+                        const itemHeight = parseInt(row[`item${i}_height`], 10) || (row[`item${i}_type`] === 'text' ? 50 : 150);
+                        const position = calculateItemPosition(row[`item${i}_position`], itemWidth, itemHeight, canvasWidth, canvasHeight);
+                        const newItem = {
+                            id: `item_${pageIndex}_${i}`, type: row[`item${i}_type`], x: position.x, y: position.y,
+                            width: itemWidth, height: itemHeight, rotation: 0, opacity: 1,
+                        };
+                        if (newItem.type === 'text' && row[`item${i}_content`]) {
+                            Object.assign(newItem, {
+                                content: row[`item${i}_content`], fontFamily: row[`item${i}_font`] || 'Arial',
+                                fontSize: parseInt(row[`item${i}_fontSize`], 10) || 24,
+                                color: row[`item${i}_color`] || '#000000', textAlign: 'center'
+                            });
+                            items.push(newItem);
+                        } else if (newItem.type === 'image' && row[`item${i}_imageName`]) {
+                            newItem.url = await uploadImageByName(row[`item${i}_imageName`]);
+                            if (newItem.url) items.push(newItem);
+                        }
                     }
                 }
-            }
+
+                return {
+                    id: `page_${pageIndex}`,
+                    name: row.pageName || `Trang ${pageIndex + 1}`,
+                    items: items,
+                    backgroundColor: row.pageBackgroundColor || '#FFFFFF',
+                    backgroundImage: await uploadImageByName(row.pageBackgroundImageName),
+                };
+            }));
 
             let eventSettings = {};
             try {
-                if (row.eventSettingsJson) eventSettings = JSON.parse(row.eventSettingsJson);
-            } catch (e) { console.warn(`Dòng ${index + 2}: Dữ liệu eventSettingsJson không hợp lệ.`); }
+                if (firstRow.eventSettingsJson) eventSettings = JSON.parse(firstRow.eventSettingsJson);
+            } catch (e) { console.warn(`Template "${firstRow.title}": Dữ liệu eventSettingsJson không hợp lệ.`); }
 
-            const templateData = {
-                width: canvasWidth,
-                height: canvasHeight,
-                pages: [{
-                    id: `page_${index}_1`,
-                    name: 'Trang 1',
-                    items: items,
-                    backgroundColor: row.canvasBackgroundColor || '#FFFFFF',
-                    backgroundImage: await uploadImageByName(row.canvasBackgroundImageName),
-                }],
-                settings: eventSettings,
-            };
+            const templateData = { width: canvasWidth, height: canvasHeight, pages: pages, settings: eventSettings };
 
             return {
-                title: row.title,
-                category: row.category,
-                group: row.group,
-                type: row.type,
-                description: row.description || '',
-                imgSrc: (await uploadImageByName(row.thumbnailName)) || defaultImgSrc,
+                title: firstRow.title, category: firstRow.category, group: firstRow.group, type: firstRow.type,
+                description: firstRow.description || '',
+                imgSrc: (await uploadImageByName(firstRow.thumbnailName)) || defaultImgSrc,
                 templateData: templateData,
-                isActive: row.isActive !== undefined ? row.isActive : true,
+                isActive: firstRow.isActive !== undefined ? firstRow.isActive : true,
             };
         }));
 
-        const result = await invitationTemplateService.bulkCreateTemplates(processedTemplates.filter(t => t.title)); // Lọc bỏ các hàng không có tiêu đề
+        const result = await invitationTemplateService.bulkCreateTemplates(processedTemplates);
 
         res.status(201).json({
             status: 'success',
@@ -347,14 +364,14 @@ const bulkCreateTemplates = async (req, res, next) => {
         });
     } catch (error) {
         if (error.code === 11000 || (error.writeErrors && error.writeErrors.some(e => e.err.code === 11000))) {
-             res.status(409).json({
-                 message: `Thêm mới thất bại. Có lỗi xảy ra, có thể do trùng tiêu đề mẫu. Vui lòng kiểm tra lại file.`,
-             });
+             res.status(409).json({ message: `Thêm mới thất bại. Có lỗi xảy ra, có thể do trùng tiêu đề mẫu.` });
         } else {
+             console.error("Lỗi khi xử lý file Excel:", error);
              next(error);
         }
     }
 };
+
 
 
 const incrementView = async (req, res, next) => {

@@ -69,7 +69,11 @@ router.get('/templates', authorize('admin', 'marketing', 'designer'), templateCo
 router.get('/templates/categories', authorize('admin', 'marketing', 'designer'), templateController.getTemplateCategories);
 router.get('/templates/types', authorize('admin', 'marketing', 'designer'), templateController.getTemplateTypesForCategory);
 router.get('/templates/groups', authorize('admin', 'marketing', 'designer'), templateController.getTemplateGroups); // Route này phải nằm ở đây
-router.post('/templates/bulk-import', authorize('admin', 'marketing', 'designer'), templateController.bulkCreateTemplates);
+router.post('/templates/bulk-import', 
+    authorize('admin', 'marketing', 'designer'), 
+    upload.single('file'), // Thêm middleware xử lý file tại đây
+    templateController.bulkCreateTemplates
+);
 router.post('/templates', authorize('admin', 'marketing', 'designer'), upload.any(), templateController.createTemplate);
 router.post('/templates/reorder', authorize('admin', 'marketing', 'designer'), templateController.reorderTemplates);
 
