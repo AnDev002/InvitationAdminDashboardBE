@@ -162,7 +162,6 @@ const bulkCreateTemplates = async (templatesToCreate) => {
         error.duplicates = allDuplicateTitles;
         throw error;
     }
-
     // 5. Nếu tất cả đều là mẫu mới, tiến hành insert
     // (Lọc một lần nữa để chắc chắn không insert các mẫu có title đã có trong DB, dù logic trên đã check)
     const templatesToInsert = templatesToCreate.filter(t => !existingTitlesInDb.has(t.title));

@@ -46,14 +46,7 @@ const bulkCreateTemplates = async (req, res, next) => {
 
         const templatesByTitle = rows.reduce((acc, row) => {
             // Bỏ qua nếu dòng không có tiêu đề hoặc không phải là chuỗi
-            if (!row.title || typeof row.title !== 'string' || row.title.trim() === '') {
-                return acc;
-            }
-            
-            // SỬA LỖI: "Làm sạch" tiêu đề bằng cách loại bỏ khoảng trắng thừa ở đầu và cuối
             const sanitizedTitle = row.title.trim(); 
-
-            // Sử dụng tiêu đề đã được làm sạch làm key để gom nhóm
             if (!acc[sanitizedTitle]) {
                 acc[sanitizedTitle] = [];
             }
