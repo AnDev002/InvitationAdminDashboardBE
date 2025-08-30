@@ -134,32 +134,36 @@ const bulkCreateTemplates = async (templatesToCreate) => {
         return [];
     }
 
-    // 1. Lấy tất cả các tiêu đề từ dữ liệu đầu vào
+    // 1. Kiểm tra các tiêu đề trùng lặp bên trong chính file tải lên
     const incomingTitles = templatesToCreate.map(t => t.title);
-
-    // 2. Kiểm tra xem có tiêu đề nào đã tồn tại trong DB không
-    const existingTemplates = await InvitationTemplate.find({ title: { $in: incomingTitles } }).select('title');
-    const existingTitles = new Set(existingTemplates.map(t => t.title));
-
-    // 3. Lọc ra các mẫu không bị trùng lặp và các mẫu bị trùng
-    const newTemplates = templatesToCreate.filter(t => !existingTitles.has(t.title));
-    const duplicateTitles = incomingTitles.filter(title => existingTitles.has(title));
-
-    // 4. Nếu có tiêu đề trùng lặp, ném lỗi với thông tin chi tiết
-    if (duplicateTitles.length > 0) {
-        const error = new Error(`Phát hiện ${duplicateTitles.length} tiêu đề đã tồn tại trong cơ sở dữ liệu.`);
+    const uniqueIncomingTitles = new Set(incomingTitles);
+    if (uniqueIncomingTitles.size !== incomingTitles.length) {
+        const seen = new Set();
+        const duplicatesInFile = incomingTitles.filter(title => {
+            if (seen.has(title)) return true;
+            seen.add(title);
+            return false;
+        });
+        const error = new Error(`Phát hiện ${[...new Set(duplicatesInFile)].length} tiêu đề bị trùng lặp trong file Excel của bạn.`);
         error.name = 'DuplicateTitlesError';
-        error.duplicates = [...new Set(duplicateTitles)]; // Đảm bảo danh sách là duy nhất
+        error.duplicates = [...new Set(duplicatesInFile)];
         throw error;
     }
 
-    // 5. Nếu tất cả đều là mẫu mới, tiến hành insert
-    if (newTemplates.length > 0) {
-        return await InvitationTemplate.insertMany(newTemplates, { ordered: false });
+    // 2. Kiểm tra xem có tiêu đề nào đã tồn tại trong DB không
+    const existingTemplates = await InvitationTemplate.find({ title: { $in: [...uniqueIncomingTitles] } }).select('title');
+    if (existingTemplates.length > 0) {
+        const existingTitles = existingTemplates.map(t => t.title);
+        const error = new Error(`Phát hiện ${existingTitles.length} tiêu đề đã tồn tại trong cơ sở dữ liệu.`);
+        error.name = 'DuplicateTitlesError';
+        error.duplicates = existingTitles;
+        throw error;
     }
 
-    return [];
+    // 3. Nếu tất cả đều là mẫu mới, tiến hành insert
+    return await InvitationTemplate.insertMany(templatesToCreate, { ordered: false });
 };
+
 // --- KẾT THÚC CẬP NHẬT ---
 
 const incrementTemplateView = async (templateId) => {
