@@ -132,6 +132,7 @@ const bulkCreateTemplates = async (req, res, next) => {
             data: result,
         });
     } catch (error) {
+
         if (error.name === 'DuplicateTitlesError') {
             return res.status(409).json({ 
                 message: `${error.message} Các tiêu đề bị trùng: ${error.duplicates.join(', ')}. Vui lòng kiểm tra lại file Excel hoặc các mẫu đã có.`,
@@ -141,11 +142,36 @@ const bulkCreateTemplates = async (req, res, next) => {
         if (error.message.startsWith('Ảnh "')) {
             return res.status(400).json({ message: error.message });
         }
+        // --- BẮT ĐẦU NÂNG CẤP ---
+        // Cung cấp thông báo lỗi chi tiết hơn khi có lỗi trùng lặp từ database
         if (error.code === 11000 || (error.writeErrors && error.writeErrors.some(e => e.err.code === 11000))) {
-             res.status(409).json({ message: `Thêm mới thất bại. Có lỗi xảy ra, có thể do trùng tiêu đề mẫu.` });
-        } else {
-             console.error("Lỗi khi xử lý file Excel:", error);
-             next(error);
+            let duplicateTitles = [];
+            if (error.writeErrors) {
+                // Trích xuất các tiêu đề bị trùng từ thông tin lỗi của MongoDB
+                duplicateTitles = error.writeErrors
+                    .map(err => err.op?.title) // Lấy tiêu đề từ document gây lỗi
+                    .filter(Boolean); // Lọc ra các giá trị undefined/null
+            }
+            
+            // Nếu không lấy được, thử phân tích từ message lỗi (phương án dự phòng)
+            if (duplicateTitles.length === 0 && error.message) {
+                const match = error.message.match(/dup key: { title: "([^"]+)" }/);
+                if (match && match[1]) {
+                    duplicateTitles.push(match[1]);
+                }
+            }
+
+            const uniqueDuplicates = [...new Set(duplicateTitles)];
+            const errorMessage = uniqueDuplicates.length > 0
+                ? `Thêm mới thất bại do trùng lặp tiêu đề đã có: ${uniqueDuplicates.join(', ')}. Vui lòng kiểm tra lại.`
+                : `Thêm mới thất bại. Có lỗi xảy ra, có thể do trùng tiêu đề mẫu.`;
+
+            return res.status(409).json({ message: errorMessage, duplicates: uniqueDuplicates });
+        } 
+        // --- KẾT THÚC NÂNG CẤP ---
+        else {
+            console.error("Lỗi khi xử lý file Excel:", error);
+            next(error);
         }
     }
 };
