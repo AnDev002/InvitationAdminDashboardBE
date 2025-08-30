@@ -61,15 +61,13 @@ const settingsSchema = new mongoose.Schema({
             isMarquee: { type: Boolean, default: false }
         }
     },
-    banners: {
-        home: { imageUrl: String, title: String, subtitle: String },
-        home_secondary_1: { imageUrl: String, title: String, subtitle: String },
-        home_secondary_2: { imageUrl: String, title: String, subtitle: String },
-        professional: { imageUrl: String, title: String, subtitle: String },
-        professional_secondary_1: { imageUrl: String, title: String, subtitle: String },
-        invitations: { imageUrl: String, title: String, subtitle: String },
-        shop: { imageUrl: String, title: String, subtitle: String },
-    },
+    banners: [{
+        id: { type: String, required: true },
+        name: { type: String, required: true },
+        htmlContent: String,
+        displayPage: { type: String, default: 'all' },
+        isEnabled: { type: Boolean, default: true }
+    }],
     footer: footerSchema,
     seo: {
         pages: {
