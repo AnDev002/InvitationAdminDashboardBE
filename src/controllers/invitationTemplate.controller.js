@@ -45,22 +45,23 @@ const bulkCreateTemplates = async (req, res, next) => {
         const defaultImgSrc = 'https://placehold.co/400x300/e0e0e0/777?text=Chua+thiet+ke';
 
         const templatesByTitle = rows.reduce((acc, row) => {
-            // Bỏ qua nếu dòng không có tiêu đề
             if (!row.title || typeof row.title !== 'string') return acc;
             
-            // SỬA LỖI: "Làm sạch" tiêu đề bằng cách loại bỏ khoảng trắng thừa ở đầu và cuối
-            const sanitizedTitle = row.title.trim(); 
+            // SỬA LỖI NÂNG CAO: Làm sạch tiêu đề bằng cách loại bỏ khoảng trắng VÀ chuyển sang chữ thường
+            const sanitizedTitle = row.title.trim().toLowerCase(); 
 
-            // Sử dụng tiêu đề đã được làm sạch làm key để gom nhóm
             if (!acc[sanitizedTitle]) {
-                acc[sanitizedTitle] = [];
+                // QUAN TRỌNG: Lưu lại tiêu đề gốc từ dòng đầu tiên để giữ nguyên định dạng chữ hoa/thường ban đầu
+                acc[sanitizedTitle] = { originalTitle: row.title.trim(), rows: [] };
             }
-            acc[sanitizedTitle].push(row);
+            acc[sanitizedTitle].rows.push(row);
             return acc;
         }, {});
 
 
-        const processedTemplates = await Promise.all(Object.values(templatesByTitle).map(async (templateRows) => {
+
+        const processedTemplates = await Promise.all(Object.values(templatesByTitle).map(async (templateGroup) => {
+            const templateRows = templateGroup.rows;
             const firstRow = templateRows[0];
             const canvasWidth = parseInt(firstRow.canvasWidth, 10) || 800;
             const canvasHeight = parseInt(firstRow.canvasHeight, 10) || 1200;
@@ -118,36 +119,37 @@ const bulkCreateTemplates = async (req, res, next) => {
             const templateData = { width: canvasWidth, height: canvasHeight, pages: pages, settings: eventSettings };
 
             return {
-                title: firstRow.title, category: firstRow.category, group: firstRow.group, type: firstRow.type,
+                title: templateGroup.originalTitle, 
+                category: firstRow.category, 
+                group: firstRow.group, 
+                type: firstRow.type,
                 description: firstRow.description || '',
                 imgSrc: (await uploadImageByName(firstRow.thumbnailName)) || defaultImgSrc,
                 templateData: templateData,
                 isActive: firstRow.isActive !== undefined ? firstRow.isActive : true,
             };
+
         }));
 
         const result = await invitationTemplateService.bulkCreateTemplates(processedTemplates);
-
+        
         res.status(201).json({
             status: 'success',
             message: `Đã thêm thành công ${result.length} mẫu thiệp từ file zip.`,
             data: result,
         });
     } catch (error) {
-        if (error.name === 'DuplicateTitlesError') {
-            return res.status(409).json({ 
-                message: `${error.message} Vui lòng kiểm tra lại file Excel hoặc các mẫu đã có.`,
-                duplicates: error.duplicates 
-            });
-        }
-        if (error.message.startsWith('Ảnh "')) {
-            return res.status(400).json({ message: error.message });
-        }
         if (error.code === 11000 || (error.writeErrors && error.writeErrors.some(e => e.err.code === 11000))) {
-             res.status(409).json({ message: `Thêm mới thất bại. Có lỗi xảy ra, có thể do trùng tiêu đề mẫu.` });
+            const duplicateTitles = error.writeErrors
+                ? error.writeErrors.map(e => e.op.title).join(', ')
+                : "Không xác định rõ";
+
+            const errorMessage = `Thêm mới thất bại. Có ${error.writeErrors ? error.writeErrors.length : 'ít nhất 1'} lỗi trùng lặp tiêu đề. Các tiêu đề bị trùng: ${duplicateTitles}.`;
+
+            return res.status(409).json({ message: errorMessage });
         } else {
-             console.error("Lỗi khi xử lý file Excel:", error);
-             next(error);
+            console.error("Lỗi khi xử lý file Excel:", error);
+            next(error);
         }
     }
 };
