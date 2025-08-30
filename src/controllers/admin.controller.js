@@ -28,14 +28,17 @@ exports.getSettings = async (req, res, next) => {
 
 exports.updateSettings = async (req, res, next) => {
     try {
+        // Dữ liệu settings được gửi dưới dạng chuỗi JSON trong field 'settings'
         const settingsData = JSON.parse(req.body.settings || '{}');
 
         if (req.files && req.files.length > 0) {
+            const fileUrlMap = new Map();
             const uploadPromises = req.files.map(async (file) => {
                 let fileBuffer = file.buffer;
                 let fileMimeType = file.mimetype;
 
-                if (file.mimeType !== 'image/gif') {
+                // Tối ưu hóa ảnh trước khi upload
+                if (file.mimetype.startsWith('image/') && file.mimetype !== 'image/gif') {
                     fileBuffer = await sharp(file.buffer)
                         .resize({ width: 1920, fit: 'inside', withoutEnlargement: true })
                         .webp({ quality: 85 })
@@ -44,15 +47,32 @@ exports.updateSettings = async (req, res, next) => {
                 }
 
                 const { url } = await uploadFileToR2(fileBuffer, fileMimeType);
-                
-                // [FIX] Thay đổi logic chuyển đổi tên file thành đường dẫn đối tượng.
-                // Chuyển đổi dấu "__" thành "." để tái tạo đường dẫn lồng nhau một cách chính xác.
-                // Ví dụ: 'banners__home_secondary_1__imageUrl' sẽ trở thành 'banners.home_secondary_1.imageUrl'.
-                const path = file.fieldname.replace(/__/g, '.');
-                
-                _.set(settingsData, path, url);
+                // `file.fieldname` sẽ có dạng `banners__0__imageUrl` hoặc `theme__logoUrl`
+                fileUrlMap.set(file.fieldname, url);
             });
             await Promise.all(uploadPromises);
+
+            // Gán URL đã upload vào đúng vị trí trong object settingsData
+            // 1. Cập nhật cho banners
+            if (Array.isArray(settingsData.banners)) {
+                settingsData.banners.forEach((banner, index) => {
+                    // Tìm file tương ứng với banner này
+                    const fieldName = `banners__${index}__imageUrl`;
+                    if (fileUrlMap.has(fieldName)) {
+                        banner.imageUrl = fileUrlMap.get(fieldName);
+                    }
+                });
+            }
+
+            // 2. Cập nhật cho các trường ảnh khác (logo, social icons...)
+            for (const [fieldName, url] of fileUrlMap.entries()) {
+                // Bỏ qua các file banner đã xử lý ở trên
+                if (!fieldName.startsWith('banners__')) {
+                    // Chuyển đổi `theme__logoUrl` thành `theme.logoUrl` để lodash set giá trị
+                    const path = fieldName.replace(/__/g, '.');
+                    _.set(settingsData, path, url);
+                }
+            }
         }
         
         const updatedSettings = await adminService.updateSettings(settingsData);

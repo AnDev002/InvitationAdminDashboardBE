@@ -39,6 +39,17 @@ const footerSchema = new mongoose.Schema({
     legalLinks: [footerLinkSchema] 
 }, { _id: false });
 
+const bannerSchema = new mongoose.Schema({
+    id: { type: String, required: true }, // Dùng UUID ở frontend để định danh
+    name: { type: String, required: true }, // Tên để quản lý trong admin (vd: "Banner chính trang chủ")
+    displayPage: { type: String, required: true, enum: ['all', 'home', 'shop', 'professional', 'invitations'], default: 'all' }, // Trang sẽ hiển thị banner này
+    isEnabled: { type: Boolean, default: true },
+    imageUrl: { type: String, default: '' },
+    title: { type: String, default: '' },
+    subtitle: { type: String, default: '' },
+    htmlContent: { type: String, default: '' } // Thêm trường HTML content
+}, { _id: false });
+
 const settingsSchema = new mongoose.Schema({
     singletonKey: { type: String, default: "main_settings", unique: true },
     livePreviewUrl: { type: String, default: "https://icards.com.vn" },
@@ -61,15 +72,7 @@ const settingsSchema = new mongoose.Schema({
             isMarquee: { type: Boolean, default: false }
         }
     },
-    banners: {
-        home: { imageUrl: String, title: String, subtitle: String },
-        home_secondary_1: { imageUrl: String, title: String, subtitle: String },
-        home_secondary_2: { imageUrl: String, title: String, subtitle: String },
-        professional: { imageUrl: String, title: String, subtitle: String },
-        professional_secondary_1: { imageUrl: String, title: String, subtitle: String },
-        invitations: { imageUrl: String, title: String, subtitle: String },
-        shop: { imageUrl: String, title: String, subtitle: String },
-    },
+    banners: [bannerSchema],
     footer: footerSchema,
     seo: {
         pages: {
@@ -110,8 +113,12 @@ const Setting = mongoose.model('Setting', settingsSchema);
 Setting.findOne({ singletonKey: "main_settings" }).then(settings => {
     if (!settings) {
         console.log("Creating default settings document...");
-        Setting.create({ singletonKey: "main_settings" });
+        Setting.create({ 
+            singletonKey: "main_settings",
+            banners: [] 
+        });
     }
 });
+
 
 module.exports = Setting;
