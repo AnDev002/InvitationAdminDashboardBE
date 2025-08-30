@@ -44,16 +44,12 @@ const bulkCreateTemplates = async (req, res, next) => {
         
         const defaultImgSrc = 'https://placehold.co/400x300/e0e0e0/777?text=Chua+thiet+ke';
 
+        // 1. Gom nhóm tất cả các dòng theo tiêu đề (đã được chuẩn hóa)
         const templatesByTitle = rows.reduce((acc, row) => {
-            // Bỏ qua nếu dòng không có tiêu đề hoặc không phải là chuỗi
             if (!row.title || typeof row.title !== 'string' || row.title.trim() === '') {
                 return acc;
             }
-            
-            // SỬA LỖI: "Làm sạch" tiêu đề bằng cách loại bỏ khoảng trắng thừa ở đầu và cuối
-            const sanitizedTitle = row.title.trim(); 
-
-            // Sử dụng tiêu đề đã được làm sạch làm key để gom nhóm
+            const sanitizedTitle = row.title.trim();
             if (!acc[sanitizedTitle]) {
                 acc[sanitizedTitle] = [];
             }
@@ -61,9 +57,9 @@ const bulkCreateTemplates = async (req, res, next) => {
             return acc;
         }, {});
 
-
+        // 2. Xử lý mỗi nhóm thành một mẫu thiệp duy nhất với nhiều trang
         const processedTemplates = await Promise.all(Object.values(templatesByTitle).map(async (templateRows) => {
-            const firstRow = templateRows[0];
+            const firstRow = templateRows[0]; // Lấy thông tin chung từ dòng đầu tiên
             const canvasWidth = parseInt(firstRow.canvasWidth, 10) || 800;
             const canvasHeight = parseInt(firstRow.canvasHeight, 10) || 1200;
 
@@ -82,6 +78,7 @@ const bulkCreateTemplates = async (req, res, next) => {
                 return url;
             };
             
+            // 3. Tạo ra một mảng các "pages" từ tất cả các dòng được gom nhóm
             const pages = await Promise.all(templateRows.map(async (row, pageIndex) => {
                 const items = [];
                 for (let i = 1; i <= 3; i++) {
@@ -116,11 +113,10 @@ const bulkCreateTemplates = async (req, res, next) => {
                 };
             }));
 
-            const eventSettings = {};
-            const templateData = { width: canvasWidth, height: canvasHeight, pages: pages, settings: eventSettings };
+            const templateData = { width: canvasWidth, height: canvasHeight, pages: pages, settings: {} };
 
             return {
-                title: firstRow.title.trim(), // Đảm bảo tiêu đề cuối cùng cũng được trim
+                title: firstRow.title.trim(),
                 category: firstRow.category, 
                 group: firstRow.group, 
                 type: firstRow.type,
@@ -131,31 +127,37 @@ const bulkCreateTemplates = async (req, res, next) => {
             };
         }));
 
-        const result = await invitationTemplateService.bulkCreateTemplates(processedTemplates);
+        // 4. Gọi service để chèn hàng loạt
+        const { createdTemplates, duplicateTitles } = await invitationTemplateService.bulkCreateTemplates(processedTemplates);
 
-        res.status(201).json({
-            status: 'success',
-            message: `Đã thêm thành công ${result.length} mẫu thiệp từ file zip.`,
-            data: result,
-        });
-    } catch (error) {
-        if (error.name === 'DuplicateTitlesError') {
+        if (duplicateTitles.length > 0) {
+            let message = `Thêm mới thất bại do trùng tiêu đề với các mẫu đã có trong hệ thống.`;
+            if (createdTemplates.length > 0) {
+                 message = `Đã thêm thành công ${createdTemplates.length} mẫu, nhưng ${duplicateTitles.length} mẫu bị lỗi do trùng tiêu đề.`;
+            }
             return res.status(409).json({ 
-                message: `${error.message} Các tiêu đề bị trùng: ${error.duplicates.join(', ')}. Vui lòng kiểm tra lại file Excel hoặc các mẫu đã có.`,
-                duplicates: error.duplicates 
+                message: `${message} Các tiêu đề bị trùng: ${duplicateTitles.join(', ')}.`,
+                duplicates: duplicateTitles,
+                createdCount: createdTemplates.length
             });
         }
+        
+        res.status(201).json({
+            status: 'success',
+            message: `Đã thêm thành công ${createdTemplates.length} mẫu thiệp từ file zip.`,
+            data: createdTemplates,
+        });
+
+    } catch (error) {
         if (error.message.startsWith('Ảnh "')) {
             return res.status(400).json({ message: error.message });
         }
-        if (error.code === 11000 || (error.writeErrors && error.writeErrors.some(e => e.err.code === 11000))) {
-             res.status(409).json({ message: `Thêm mới thất bại. Có lỗi xảy ra, có thể do trùng tiêu đề mẫu.` });
-        } else {
-             console.error("Lỗi khi xử lý file Excel:", error);
-             next(error);
-        }
+        console.error("Lỗi khi xử lý file Excel:", error);
+        next(error);
     }
 };
+
+
 
 // --- CÁC HÀM KHÁC GIỮ NGUYÊN ---
 const processContentImages = async (htmlContent) => {

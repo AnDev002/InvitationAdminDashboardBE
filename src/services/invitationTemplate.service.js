@@ -131,46 +131,65 @@ const getUniqueTypesForCategoryAndGroup = async (category, group) => {
 // --- HÀM ĐÃ ĐƯỢC CẬP NHẬT ---
 const bulkCreateTemplates = async (templatesToCreate) => {
     if (!templatesToCreate || templatesToCreate.length === 0) {
-        return [];
+        return { createdTemplates: [], duplicateTitles: [] };
     }
 
+    // 1. Lấy tất cả các tiêu đề đến và chuẩn hóa (viết thường để so sánh không phân biệt hoa/thường)
     const incomingTitles = templatesToCreate.map(t => t.title);
+    const lowercasedIncomingTitles = incomingTitles.map(t => t.toLowerCase());
 
-    // 1. Kiểm tra trùng lặp BÊN TRONG file upload
-    const titlesInFile = new Set();
-    const duplicatesInFile = new Set();
-    for (const title of incomingTitles) {
-        if (titlesInFile.has(title)) {
-            duplicatesInFile.add(title);
+    // 2. Tìm các tiêu đề đã tồn tại trong DB
+    const existingTemplates = await InvitationTemplate.find({ 
+        title: { $in: incomingTitles.map(t => new RegExp(`^${t}$`, 'i')) } // Tìm kiếm không phân biệt hoa/thường
+    }).select('title');
+    const lowercasedExistingTitlesInDb = new Set(existingTemplates.map(t => t.title.toLowerCase()));
+
+    // 3. Lọc ra các mẫu hợp lệ để chèn
+    const seenTitles = new Set();
+    const duplicateTitles = new Set(lowercasedExistingTitlesInDb);
+    const templatesToInsert = [];
+
+    for (const template of templatesToCreate) {
+        const lowercasedTitle = template.title.toLowerCase();
+        // Kiểm tra xem tiêu đề đã có trong DB hoặc đã gặp trong file này chưa
+        if (!lowercasedExistingTitlesInDb.has(lowercasedTitle) && !seenTitles.has(lowercasedTitle)) {
+            templatesToInsert.push(template);
+            seenTitles.add(lowercasedTitle);
         } else {
-            titlesInFile.add(title);
+            // Nếu đã tồn tại hoặc trùng lặp trong file, thêm vào danh sách lỗi
+            duplicateTitles.add(template.title); // Giữ lại tên gốc để báo lỗi
         }
     }
 
-    // 2. Kiểm tra xem có tiêu đề nào đã tồn tại trong DB không
-    const existingTemplates = await InvitationTemplate.find({ title: { $in: incomingTitles } }).select('title');
-    const existingTitlesInDb = new Set(existingTemplates.map(t => t.title));
-
-    // 3. Gộp tất cả các tiêu đề bị trùng lặp
-    const allDuplicateTitles = [...new Set([...duplicatesInFile, ...existingTitlesInDb])];
-
-    // 4. Nếu có tiêu đề trùng lặp, ném lỗi với thông tin chi tiết
-    if (allDuplicateTitles.length > 0) {
-        const error = new Error(`Phát hiện ${allDuplicateTitles.length} tiêu đề đã tồn tại hoặc bị trùng lặp.`);
-        error.name = 'DuplicateTitlesError';
-        error.duplicates = allDuplicateTitles;
-        throw error;
-    }
-
-    // 5. Nếu tất cả đều là mẫu mới, tiến hành insert
-    // (Lọc một lần nữa để chắc chắn không insert các mẫu có title đã có trong DB, dù logic trên đã check)
-    const templatesToInsert = templatesToCreate.filter(t => !existingTitlesInDb.has(t.title));
+    // 4. Chèn các mẫu hợp lệ vào DB
+    let createdTemplates = [];
     if (templatesToInsert.length > 0) {
-        return await InvitationTemplate.insertMany(templatesToInsert, { ordered: false });
+        try {
+            createdTemplates = await InvitationTemplate.insertMany(templatesToInsert, { ordered: false });
+        } catch (error) {
+            // Xử lý lỗi cuối cùng nếu có, mặc dù logic trên đã cố gắng ngăn chặn
+            if (error.code === 11000 && error.writeErrors) {
+                error.writeErrors.forEach(err => {
+                    // Trích xuất tiêu đề bị trùng từ thông báo lỗi của MongoDB
+                    const titleMatch = err.err.errmsg.match(/dup key: { title: "([^"]+)" }/);
+                    if (titleMatch && titleMatch[1]) {
+                        duplicateTitles.add(titleMatch[1]);
+                    }
+                });
+            } else {
+                // Ném lại lỗi nếu không phải lỗi trùng lặp
+                throw error;
+            }
+        }
     }
-
-    return [];
+    
+    // 5. Trả về kết quả
+    return {
+        createdTemplates,
+        duplicateTitles: Array.from(duplicateTitles),
+    };
 };
+
 // --- KẾT THÚC CẬP NHẬT ---
 
 const incrementTemplateView = async (templateId) => {
