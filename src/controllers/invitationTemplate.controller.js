@@ -45,9 +45,15 @@ const bulkCreateTemplates = async (req, res, next) => {
         const defaultImgSrc = 'https://placehold.co/400x300/e0e0e0/777?text=Chua+thiet+ke';
 
         const templatesByTitle = rows.reduce((acc, row) => {
-            if (!row.title || typeof row.title !== 'string') return acc;
+            // Bỏ qua nếu dòng không có tiêu đề hoặc không phải là chuỗi
+            if (!row.title || typeof row.title !== 'string' || row.title.trim() === '') {
+                return acc;
+            }
             
+            // SỬA LỖI: "Làm sạch" tiêu đề bằng cách loại bỏ khoảng trắng thừa ở đầu và cuối
             const sanitizedTitle = row.title.trim(); 
+
+            // Sử dụng tiêu đề đã được làm sạch làm key để gom nhóm
             if (!acc[sanitizedTitle]) {
                 acc[sanitizedTitle] = [];
             }
@@ -114,7 +120,7 @@ const bulkCreateTemplates = async (req, res, next) => {
             const templateData = { width: canvasWidth, height: canvasHeight, pages: pages, settings: eventSettings };
 
             return {
-                title: firstRow.title.trim(), // SỬA LỖI: Đảm bảo title được trim()
+                title: firstRow.title.trim(), // Đảm bảo tiêu đề cuối cùng cũng được trim
                 category: firstRow.category, 
                 group: firstRow.group, 
                 type: firstRow.type,
@@ -135,33 +141,21 @@ const bulkCreateTemplates = async (req, res, next) => {
     } catch (error) {
         if (error.name === 'DuplicateTitlesError') {
             return res.status(409).json({ 
-                message: `${error.message} Vui lòng kiểm tra lại file Excel hoặc các mẫu đã có.`,
+                message: `${error.message} Các tiêu đề bị trùng: ${error.duplicates.join(', ')}. Vui lòng kiểm tra lại file Excel hoặc các mẫu đã có.`,
                 duplicates: error.duplicates 
             });
         }
         if (error.message.startsWith('Ảnh "')) {
             return res.status(400).json({ message: error.message });
         }
-        // SỬA LỖI: Cải thiện thông báo lỗi khi có lỗi trùng lặp từ database
         if (error.code === 11000 || (error.writeErrors && error.writeErrors.some(e => e.err.code === 11000))) {
-            let duplicateTitles = [];
-            if (error.writeErrors) {
-                duplicateTitles = error.writeErrors
-                    .filter(e => e.err.code === 11000)
-                    .map(e => e.err.op.title);
-            } else if (error.keyValue) {
-                duplicateTitles = [error.keyValue.title];
-            }
-            
-            const message = `Thêm mới thất bại do trùng tiêu đề mẫu. Các tiêu đề bị trùng: ${[...new Set(duplicateTitles)].join(', ')}`;
-            return res.status(409).json({ message: message, duplicates: [...new Set(duplicateTitles)] });
+             res.status(409).json({ message: `Thêm mới thất bại. Có lỗi xảy ra, có thể do trùng tiêu đề mẫu.` });
         } else {
              console.error("Lỗi khi xử lý file Excel:", error);
              next(error);
         }
     }
 };
-
 
 // --- CÁC HÀM KHÁC GIỮ NGUYÊN ---
 const processContentImages = async (htmlContent) => {
