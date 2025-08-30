@@ -65,6 +65,7 @@ const settingsSchema = new mongoose.Schema({
         id: { type: String, required: true },
         name: { type: String, required: true },
         htmlContent: String,
+        imageUrl: String, // Thêm trường để lưu URL ảnh (bao gồm cả GIF)
         displayPage: { type: String, default: 'all' },
         isEnabled: { type: Boolean, default: true }
     }],
