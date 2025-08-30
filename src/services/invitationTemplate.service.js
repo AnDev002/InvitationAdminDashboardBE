@@ -176,6 +176,33 @@ const reorderTemplates = async (templateIds) => {
     return await InvitationTemplate.bulkWrite(bulkOps);
 };
 
+const bulkDeleteInvitationsByTemplateFilters = async (filters) => {
+  // 1. Xây dựng bộ lọc an toàn, chỉ lấy các trường hợp lệ
+  const validFilters = {};
+  if (filters.category) validFilters.category = filters.category;
+  if (filters.group) validFilters.group = filters.group;
+  if (filters.type) validFilters.type = filters.type;
+
+  // Nếu không có bộ lọc nào được cung cấp, không thực hiện gì cả
+  if (Object.keys(validFilters).length === 0) {
+    return { deletedCount: 0, templatesFound: 0 };
+  }
+
+  // 2. Tìm tất cả các MẪU phù hợp với bộ lọc và chỉ lấy ID của chúng
+  const templates = await InvitationTemplate.find(validFilters).select('_id');
+  
+  if (templates.length === 0) {
+    return { deletedCount: 0, templatesFound: 0 };
+  }
+
+  // 3. Trích xuất danh sách các ID mẫu
+  const templateIds = templates.map(t => t._id);
+
+  // 4. Xóa tất cả các THIỆP MỜI có template ID nằm trong danh sách đã tìm thấy
+  const result = await Invitation.deleteMany({ template: { $in: templateIds } });
+
+  return { deletedCount: result.deletedCount || 0, templatesFound: templates.length };
+};
 module.exports = {
   queryInvitationTemplates,
   getTemplateById,
@@ -190,4 +217,5 @@ module.exports = {
   getUniqueGroupsForCategory,
   getUniqueTypesForCategoryAndGroup,
   reorderTemplates,
+  bulkDeleteInvitationsByTemplateFilters
 };

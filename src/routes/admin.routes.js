@@ -90,5 +90,10 @@ router.use('/fonts', authorize('admin', 'designer'), fontRoutes);
 router.get('/settings', authorize('admin', 'marketing'), adminController.getSettings);
 router.put('/settings', authorize('admin', 'marketing'), upload.any(), adminController.updateSettings);
 
+router.delete(
+    '/invitations/bulk-delete-by-filter', 
+    authorize('admin', 'marketing', 'designer'), 
+    templateController.bulkDeleteInvitationsByFilter
+);
 
 module.exports = router;
