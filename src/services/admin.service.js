@@ -73,48 +73,51 @@ const getSettings = async () => {
 
 
 const updateSettings = async (settingsData) => {
-    let settings = await Setting.findOne();
+    // Tìm một document settings duy nhất. Thường chỉ có một.
+    let settings = await Setting.findOne({ singletonKey: "main_settings" });
 
     if (!settings) {
-        // If no settings document exists at all, create a new one.
-        settings = new Setting(settingsData);
-    } else {
-        // Settings exist, update them carefully.
-
-        // For plain nested objects (not arrays of documents), merge is safe.
-        settings.theme = _.merge(settings.theme || {}, settingsData.theme);
-        settings.banners = _.merge(settings.banners || {}, settingsData.banners);
-
-        // For arrays of sub-documents, DIRECTLY REPLACE the array.
-        // This is the key fix. It tells Mongoose to process the new array
-        // from scratch, correctly casting each item and running validators.
-        if (settingsData.footer) {
-            if (settingsData.footer.socialLinks) {
-                settings.footer.socialLinks = settingsData.footer.socialLinks;
-            }
-            if (settingsData.footer.columns) {
-                settings.footer.columns = settingsData.footer.columns;
-            }
-            if (settingsData.footer.legalLinks) {
-                settings.footer.legalLinks = settingsData.footer.legalLinks;
-            }
-        }
-        
-        if (settingsData.headerNav) {
-            settings.headerNav = settingsData.headerNav;
-        }
-
-        // Mark the footer as modified if it was part of the update.
-        // This can sometimes be necessary to let Mongoose know a mixed-type object has changed.
-        if (settingsData.footer) {
-            settings.markModified('footer');
-        }
+        // Nếu không có, tạo mới.
+        console.log("Creating new settings document during update...");
+        return await Setting.create({ singletonKey: "main_settings", ...settingsData });
     }
 
-    // Now, save the updated document. Mongoose validation will run here.
+    // --- LOGIC SỬA LỖI & NÂNG CẤP ---
+    // Thay vì dùng _.merge, chúng ta sẽ gán trực tiếp và để Mongoose xử lý.
+    // Điều này đảm bảo các mảng (như banners, socialLinks) được thay thế hoàn toàn
+    // thay vì bị "trộn" lại, giải quyết được vấn đề upload/xóa file.
+
+    // 1. Gán lại toàn bộ các mảng
+    if (settingsData.banners) {
+        settings.banners = settingsData.banners;
+    }
+    if (settingsData.footer) {
+        settings.footer = settingsData.footer;
+    }
+    if (settingsData.headerNav) {
+        settings.headerNav = settingsData.headerNav;
+    }
+    if (settingsData.seo) {
+        // Dùng merge cho SEO vì cấu trúc lồng nhau phức tạp và không chứa mảng file
+        settings.seo = _.merge(settings.seo || {}, settingsData.seo);
+    }
+    
+    // 2. Gán lại các trường theme
+    if (settingsData.theme) {
+        // Dùng merge cho theme vì nó là object đơn giản
+        settings.theme = _.merge(settings.theme || {}, settingsData.theme);
+    }
+
+    // 3. Đánh dấu các đường dẫn phức tạp đã bị thay đổi để Mongoose nhận biết
+    settings.markModified('banners');
+    settings.markModified('footer');
+    settings.markModified('headerNav');
+
+    // 4. Lưu lại document
     await settings.save();
     return settings;
 };
+
 
 
 module.exports = {
