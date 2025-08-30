@@ -111,9 +111,15 @@ const bulkCreateTemplates = async (req, res, next) => {
 
             const eventSettings = {};
             const templateData = { width: canvasWidth, height: canvasHeight, pages: pages, settings: eventSettings };
+            const title = firstRow.title.trim();
+            const slug = title
+                .toLowerCase()
+                .replace(/ /g, '-')
+                .replace(/[^\w-]+/g, '');
 
             return {
-                title: firstRow.title.trim(), // Đảm bảo tiêu đề cuối cùng cũng được trim
+                title: firstRow.title.trim(), 
+                slug: slug,
                 category: firstRow.category, 
                 group: firstRow.group, 
                 type: firstRow.type,
