@@ -76,6 +76,7 @@ router.post('/templates/bulk-import',
 );
 router.post('/templates', authorize('admin', 'marketing', 'designer'), upload.any(), templateController.createTemplate);
 router.post('/templates/reorder', authorize('admin', 'marketing', 'designer'), templateController.reorderTemplates);
+router.delete('/templates/bulk-delete-by-filter', authorize('admin', 'designer'), templateController.bulkDeleteTemplatesByFilter);
 
 // ROUTE ĐỘNG (KHÁI QUÁT) ĐƯỢC ĐẶT Ở SAU CÙNG
 router.get('/templates/:id', authorize('admin', 'designer'), templateController.getTemplateById); // Route này phải nằm sau các route tĩnh ở trên
@@ -90,10 +91,5 @@ router.use('/fonts', authorize('admin', 'designer'), fontRoutes);
 router.get('/settings', authorize('admin', 'marketing'), adminController.getSettings);
 router.put('/settings', authorize('admin', 'marketing'), upload.any(), adminController.updateSettings);
 
-router.delete(
-    '/invitations/bulk-delete-by-filter', 
-    authorize('admin', 'marketing', 'designer'), 
-    templateController.bulkDeleteInvitationsByFilter
-);
 
 module.exports = router;

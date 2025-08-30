@@ -176,33 +176,28 @@ const reorderTemplates = async (templateIds) => {
     return await InvitationTemplate.bulkWrite(bulkOps);
 };
 
-const bulkDeleteInvitationsByTemplateFilters = async (filters) => {
-  // 1. Xây dựng bộ lọc an toàn, chỉ lấy các trường hợp lệ
-  const validFilters = {};
-  if (filters.category) validFilters.category = filters.category;
-  if (filters.group) validFilters.group = filters.group;
-  if (filters.type) validFilters.type = filters.type;
+// --- HÀM MỚI ĐỂ XÓA HÀNG LOẠT ---
+const bulkDeleteTemplatesByFilter = async (filter) => {
+    if (!filter || Object.keys(filter).length === 0) {
+        throw new Error('Cần có bộ lọc để xóa hàng loạt.');
+    }
+    // Lọc ra các giá trị null hoặc 'all' để tạo query Mongoose
+    const query = Object.entries(filter).reduce((acc, [key, value]) => {
+        if (value && value !== 'all') {
+            acc[key] = value;
+        }
+        return acc;
+    }, {});
 
-  // Nếu không có bộ lọc nào được cung cấp, không thực hiện gì cả
-  if (Object.keys(validFilters).length === 0) {
-    return { deletedCount: 0, templatesFound: 0 };
-  }
+    if (Object.keys(query).length === 0) {
+        throw new Error('Bộ lọc không hợp lệ để thực hiện xóa.');
+    }
 
-  // 2. Tìm tất cả các MẪU phù hợp với bộ lọc và chỉ lấy ID của chúng
-  const templates = await InvitationTemplate.find(validFilters).select('_id');
-  
-  if (templates.length === 0) {
-    return { deletedCount: 0, templatesFound: 0 };
-  }
-
-  // 3. Trích xuất danh sách các ID mẫu
-  const templateIds = templates.map(t => t._id);
-
-  // 4. Xóa tất cả các THIỆP MỜI có template ID nằm trong danh sách đã tìm thấy
-  const result = await Invitation.deleteMany({ template: { $in: templateIds } });
-
-  return { deletedCount: result.deletedCount || 0, templatesFound: templates.length };
+    const result = await InvitationTemplate.deleteMany(query);
+    return result;
 };
+// --- KẾT THÚC HÀM MỚI ---
+
 module.exports = {
   queryInvitationTemplates,
   getTemplateById,
@@ -217,5 +212,5 @@ module.exports = {
   getUniqueGroupsForCategory,
   getUniqueTypesForCategoryAndGroup,
   reorderTemplates,
-  bulkDeleteInvitationsByTemplateFilters
+  bulkDeleteTemplatesByFilter,
 };

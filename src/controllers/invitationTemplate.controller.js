@@ -10,20 +10,6 @@ const { uploadFileToR2 } = require('../services/r2.service');
 const xlsx = require('xlsx');
 const AdmZip = require('adm-zip');
 
-const slugify = (text) => {
-  if (typeof text !== 'string') return null; // Trả về null nếu không có text
-  return text
-    .toString()
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-')           // Thay thế khoảng trắng bằng -
-    .replace(/[^\w\-]+/g, '')       // Loại bỏ các ký tự không hợp lệ
-    .replace(/\-\-+/g, '-')         // Thay thế nhiều - bằng một -
-    .replace(/^-+/, '')             // Cắt bỏ - ở đầu
-    .replace(/-+$/, '');            // Cắt bỏ - ở cuối
-};
-
-
 // --- HÀM bulkCreateTemplates ĐÃ ĐƯỢC CẬP NHẬT ---
 const bulkCreateTemplates = async (req, res, next) => {
     try {
@@ -44,8 +30,8 @@ const bulkCreateTemplates = async (req, res, next) => {
         const sheetName = workbook.SheetNames[0];
         const rows = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
-        if (!rows || rows.length === 0) {
-            return res.status(400).json({ message: 'File data.xlsx rỗng hoặc không có dữ liệu.' });
+        if (!rows || !Array.isArray(rows) || rows.length === 0) {
+            return res.status(400).json({ message: 'File data.xlsx rỗng hoặc không có dữ liệu hợp lệ.' });
         }
 
         const imageMap = new Map();
@@ -58,29 +44,34 @@ const bulkCreateTemplates = async (req, res, next) => {
         
         const defaultImgSrc = 'https://placehold.co/400x300/e0e0e0/777?text=Chua+thiet+ke';
 
-        // LOGIC GOM NHÓM ĐÃ ĐƯỢC CẢI TIẾN
         const templatesByTitle = rows.reduce((acc, row) => {
+            // Bỏ qua nếu dòng không có tiêu đề
             if (!row.title || typeof row.title !== 'string') return acc;
             
-            const sanitizedTitle = row.title.trim().toLowerCase(); 
+            // SỬA LỖI: "Làm sạch" tiêu đề bằng cách loại bỏ khoảng trắng thừa ở đầu và cuối
+            const sanitizedTitle = row.title.trim(); 
 
+            // Sử dụng tiêu đề đã được làm sạch làm key để gom nhóm
             if (!acc[sanitizedTitle]) {
-                acc[sanitizedTitle] = { originalTitle: row.title.trim(), rows: [] };
+                acc[sanitizedTitle] = [];
             }
-            acc[sanitizedTitle].rows.push(row);
+            acc[sanitizedTitle].push(row);
             return acc;
         }, {});
 
-        const processedTemplates = await Promise.all(Object.values(templatesByTitle).map(async (templateGroup) => {
-            const templateRows = templateGroup.rows;
+
+        const processedTemplates = await Promise.all(Object.values(templatesByTitle).map(async (templateRows) => {
             const firstRow = templateRows[0];
             const canvasWidth = parseInt(firstRow.canvasWidth, 10) || 800;
             const canvasHeight = parseInt(firstRow.canvasHeight, 10) || 1200;
 
-
             const uploadImageByName = async (imageName) => {
-                if (!imageName || !imageMap.has(imageName.toLowerCase())) return null;
-                const imageBuffer = imageMap.get(imageName.toLowerCase());
+                if (!imageName) return null;
+                const lowerCaseImageName = imageName.toLowerCase();
+                if (!imageMap.has(lowerCaseImageName)) {
+                    throw new Error(`Ảnh "${imageName}" được khai báo trong Excel nhưng không tìm thấy trong thư mục /images/ của file zip.`);
+                }
+                const imageBuffer = imageMap.get(lowerCaseImageName);
                 const processedBuffer = await sharp(imageBuffer)
                     .resize({ width: 1920, fit: 'inside', withoutEnlargement: true })
                     .webp({ quality: 85 })
@@ -88,7 +79,6 @@ const bulkCreateTemplates = async (req, res, next) => {
                 const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
                 return url;
             };
-
             
             const pages = await Promise.all(templateRows.map(async (row, pageIndex) => {
                 const items = [];
@@ -98,15 +88,8 @@ const bulkCreateTemplates = async (req, res, next) => {
                         const itemHeight = parseInt(row[`item${i}_height`], 10) || (row[`item${i}_type`] === 'text' ? 50 : 150);
                         const position = calculateItemPosition(row[`item${i}_position`], itemWidth, itemHeight, canvasWidth, canvasHeight);
                         const newItem = {
-                            id: `item_${pageIndex}_${i}`, 
-                            type: row[`item${i}_type`], 
-                            x: position.x, 
-                            y: position.y,
-                            width: itemWidth, 
-                            height: itemHeight, 
-                            rotation: 0, 
-                            opacity: 1,
-                            zIndex: i, 
+                            id: `item_${pageIndex}_${i}`, type: row[`item${i}_type`], x: position.x, y: position.y,
+                            width: itemWidth, height: itemHeight, rotation: 0, opacity: 1,
                         };
                         if (newItem.type === 'text' && row[`item${i}_content`]) {
                             Object.assign(newItem, {
@@ -121,6 +104,7 @@ const bulkCreateTemplates = async (req, res, next) => {
                         }
                     }
                 }
+
                 return {
                     id: `page_${pageIndex}`,
                     name: row.pageName || `Trang ${pageIndex + 1}`,
@@ -130,25 +114,16 @@ const bulkCreateTemplates = async (req, res, next) => {
                 };
             }));
 
-
-            let eventSettings = {};
-            try {
-                if (firstRow.eventSettingsJson) eventSettings = JSON.parse(firstRow.eventSettingsJson);
-            } catch (e) { console.warn(`Template "${firstRow.title}": Dữ liệu eventSettingsJson không hợp lệ.`); }
-
+            const eventSettings = {};
             const templateData = { width: canvasWidth, height: canvasHeight, pages: pages, settings: eventSettings };
 
             return {
-                title: templateGroup.originalTitle,
-                slug: slugify(templateGroup.originalTitle), 
-                category: firstRow.category, group: firstRow.group, type: firstRow.type,
+                title: firstRow.title, category: firstRow.category, group: firstRow.group, type: firstRow.type,
                 description: firstRow.description || '',
                 imgSrc: (await uploadImageByName(firstRow.thumbnailName)) || defaultImgSrc,
                 templateData: templateData,
                 isActive: firstRow.isActive !== undefined ? firstRow.isActive : true,
             };
-
-
         }));
 
         const result = await invitationTemplateService.bulkCreateTemplates(processedTemplates);
@@ -158,28 +133,22 @@ const bulkCreateTemplates = async (req, res, next) => {
             message: `Đã thêm thành công ${result.length} mẫu thiệp từ file zip.`,
             data: result,
         });
-
     } catch (error) {
-        // --- BẮT ĐẦU THAY THẾ TOÀN BỘ KHỐI CATCH CŨ BẰNG KHỐI NÀY ---
-
-        // BƯỚC 1: GHI LẠI TOÀN BỘ LỖI RA CONSOLE ĐỂ PHÂN TÍCH
-        console.error("====== CHI TIẾT LỖI BULK CREATE ======");
-        // Sử dụng JSON.stringify để xem cấu trúc lồng nhau của lỗi một cách chi tiết
-        console.error(JSON.stringify(error, null, 2)); 
-        console.error("======================================");
-
-        if (error.code === 11000 || (error.writeErrors && error.writeErrors.some(e => e.err.code === 11000))) {
-            
-            // BƯỚC 2: Cung cấp thông báo lỗi tổng quát nhưng hữu ích cho người dùng
-            const errorMessage = "Thêm mới thất bại do trùng lặp dữ liệu (title hoặc slug). Vui lòng kiểm tra lại file excel và đảm bảo các tiêu đề là duy nhất. Chi tiết lỗi đã được ghi lại ở console của server.";
-
-            return res.status(409).json({ message: errorMessage });
-        } else {
-            // Chuyển cho errorHandler xử lý các lỗi khác
-            console.error("Lỗi không xác định khi xử lý bulk create:", error);
-            next(error); 
+        if (error.name === 'DuplicateTitlesError') {
+            return res.status(409).json({ 
+                message: `${error.message} Vui lòng kiểm tra lại file Excel hoặc các mẫu đã có.`,
+                duplicates: error.duplicates 
+            });
         }
-        // --- KẾT THÚC THAY THẾ ---
+        if (error.message.startsWith('Ảnh "')) {
+            return res.status(400).json({ message: error.message });
+        }
+        if (error.code === 11000 || (error.writeErrors && error.writeErrors.some(e => e.err.code === 11000))) {
+             res.status(409).json({ message: `Thêm mới thất bại. Có lỗi xảy ra, có thể do trùng tiêu đề mẫu.` });
+        } else {
+             console.error("Lỗi khi xử lý file Excel:", error);
+             next(error);
+        }
     }
 };
 
@@ -425,29 +394,22 @@ const reorderTemplates = async (req, res, next) => {
         next(error);
     }
 };
-const bulkDeleteInvitationsByFilter = async (req, res, next) => {
+
+// --- CONTROLLER MỚI ĐỂ XÓA HÀNG LOẠT ---
+const bulkDeleteTemplatesByFilter = async (req, res, next) => {
     try {
-        // Lấy các bộ lọc từ req.body thay vì req.params
         const filters = req.body;
-        
-        const result = await invitationTemplateService.bulkDeleteInvitationsByTemplateFilters(filters);
-        
-        if (result.templatesFound === 0) {
-            return res.status(404).json({
-                status: 'fail',
-                message: 'Không tìm thấy mẫu thiệp nào phù hợp với bộ lọc của bạn. Không có thiệp mời nào được xóa.',
-            });
-        }
-        
+        const result = await invitationTemplateService.bulkDeleteTemplatesByFilter(filters);
         res.status(200).json({
             status: 'success',
-            message: `Đã xóa thành công ${result.deletedCount} thiệp mời từ ${result.templatesFound} mẫu thiệp phù hợp.`,
+            message: `Đã xóa thành công ${result.deletedCount} mẫu thiệp.`,
             data: result,
         });
     } catch (error) {
         next(error);
     }
 };
+// --- KẾT THÚC CONTROLLER MỚI ---
 
 module.exports = {
     getInvitationTemplates,
@@ -462,5 +424,5 @@ module.exports = {
     incrementView,
     getTemplateGroups,
     reorderTemplates,
-    bulkDeleteInvitationsByFilter
+    bulkDeleteTemplatesByFilter,
 };
