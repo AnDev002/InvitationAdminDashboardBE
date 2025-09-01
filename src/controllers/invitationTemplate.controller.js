@@ -9,8 +9,6 @@ const sharp = require('sharp');
 const { uploadFileToR2 } = require('../services/r2.service');
 const xlsx = require('xlsx');
 const AdmZip = require('adm-zip');
-
-// --- HÀM bulkCreateTemplates ĐÃ ĐƯỢC CẬP NHẬT ---
 const bulkCreateTemplates = async (req, res, next) => {
     try {
         const allowedMimeTypes = ['application/zip', 'application/x-zip-compressed', 'multipart/x-zip', 'application/octet-stream'];
@@ -84,7 +82,7 @@ const bulkCreateTemplates = async (req, res, next) => {
                         const position = calculateItemPosition(row[`item${i}_position`], itemWidth, itemHeight, canvasWidth, canvasHeight);
                         const newItem = {
                             id: `item_${pageIndex}_${i}`, type: row[`item${i}_type`], x: position.x, y: position.y,
-                            width: itemWidth, height: itemHeight, rotation: 0, opacity: 1,
+                            width: itemWidth, height: itemHeight, rotation: 0, opacity: 1, zIndex: 100
                         };
                         if (newItem.type === 'text' && row[`item${i}_content`]) {
                             Object.assign(newItem, {
@@ -182,7 +180,6 @@ const bulkCreateTemplates = async (req, res, next) => {
     }
 };
 
-// --- CÁC HÀM KHÁC GIỮ NGUYÊN ---
 const processContentImages = async (htmlContent) => {
     const regex = /<img[^>]+src="data:image\/[^;]+;base64[^>]+"/g;
     const matches = htmlContent.match(regex);
