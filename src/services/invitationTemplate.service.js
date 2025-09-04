@@ -157,33 +157,38 @@ const updateTemplateById = async (id, updateData, files = []) => {
             const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
             const pageId = file.fieldname.split('_')[1];
             const pageIndex = templateDataObject.pages.findIndex(p => p.id === pageId);
+            
+            // ======================= DÒNG SỬA LỖI QUAN TRỌNG =======================
+            // Cập nhật URL mới vào đúng trang trong object templateDataObject
+            // để hàm generateAutomaticThumbnail có dữ liệu chính xác.
             if (pageIndex !== -1) {
                 templateDataObject.pages[pageIndex].backgroundImage = url;
             }
+            // ======================================================================
         });
         await Promise.all(uploadPromises);
     }
     
-    // Cập nhật dữ liệu thiết kế vào template
+    // Gán dữ liệu thiết kế đã được cập nhật (với URL ảnh nền đúng) vào template
     template.templateData = templateDataObject;
 
     // Xử lý ảnh nền của THUMBNAIL
-    const thumbnailBgFile = files.find(f => f.fieldname === 'thumbnailBackground'); // Tên file mới
+    const thumbnailBgFile = files.find(f => f.fieldname === 'thumbnailBackground');
     if (thumbnailBgFile) {
         const processedBgBuffer = await sharp(thumbnailBgFile.buffer).webp({ quality: 80 }).toBuffer();
         const { url } = await uploadFileToR2(processedBgBuffer, 'image/webp');
         template.thumbnailBackgroundSrc = url;
     } else if (updateData.thumbnailBackgroundSrc === '') {
-        // Cho phép xóa ảnh nền
         template.thumbnailBackgroundSrc = '';
     }
     
     // TỰ ĐỘNG TẠO THUMBNAIL MỚI
+    // Bây giờ, template.templateData.pages đã chứa URL ảnh nền chính xác
     if (template.templateData && template.templateData.pages && template.templateData.pages.length > 0) {
         const thumbnailBuffer = await generateAutomaticThumbnail(template.templateData.pages, template.thumbnailBackgroundSrc);
         if (thumbnailBuffer) {
             const { url: newThumbnailUrl } = await uploadFileToR2(thumbnailBuffer, 'image/webp');
-            template.imgSrc = newThumbnailUrl; // Ghi đè imgSrc cũ bằng ảnh mới tạo
+            template.imgSrc = newThumbnailUrl; 
         }
     }
     
@@ -191,6 +196,7 @@ const updateTemplateById = async (id, updateData, files = []) => {
     await template.save();
     return template;
 };
+
 
 const deleteTemplateById = async (id) => {
   await InvitationTemplate.findByIdAndDelete(id);
