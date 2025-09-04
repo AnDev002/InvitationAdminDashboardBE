@@ -73,6 +73,95 @@ async function renderPageToBuffer(page) {
     return sharp(await canvas.toBuffer()).composite(compositeOperations).webp({ quality: 80 }).toBuffer();
 }
 
+
+
+function escapeXml(unsafe) {
+    if (typeof unsafe !== 'string') return '';
+    return unsafe.replace(/[<>&'"]/g, function (c) {
+        switch (c) {
+            case '<': return '&lt;';
+            case '>': return '&gt;';
+            case '&': return '&amp;';
+            case '\'': return '&apos;';
+            case '"': return '&quot;';
+            default: return c;
+        }
+    });
+}
+
+async function renderPageToBuffer(page) {
+    if (!page) return null;
+
+    // 1. Tạo canvas nền với màu sắc
+    let canvas = sharp({
+        create: {
+            width: page.canvasWidth,
+            height: page.canvasHeight,
+            channels: 4,
+            background: page.backgroundColor || '#FFFFFF'
+        }
+    });
+
+    // 2. Thêm ảnh nền của trang (nếu có)
+    if (page.backgroundImage) {
+        try {
+            const bgResponse = await axios.get(page.backgroundImage, { responseType: 'arraybuffer' });
+            const bgBuffer = Buffer.from(bgResponse.data);
+            // Kiểm tra xem buffer có hợp lệ không trước khi ghép
+            if (bgBuffer.length > 0) {
+                 canvas = sharp(await canvas.toBuffer()).composite([{ input: bgBuffer }]);
+            }
+        } catch (e) { console.error("Thumbnail Gen Error: Cannot fetch page background.", e); }
+    }
+
+    // 3. Sắp xếp và render các đối tượng (text, image)
+    const compositeOperations = [];
+    const sortedItems = [...(page.items || [])].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+
+    for (const item of sortedItems) {
+        if (!item.visible) continue;
+
+        let itemBuffer;
+        if (item.type === 'image' && item.url) {
+            try {
+                const itemImgRes = await axios.get(item.url, { responseType: 'arraybuffer' });
+                itemBuffer = await sharp(Buffer.from(itemImgRes.data))
+                    .resize(Math.round(item.width), Math.round(item.height))
+                    .toBuffer();
+            } catch (e) { console.error(`Thumbnail Gen Error: Cannot fetch item image ${item.url}`, e); continue; }
+        } else if (item.type === 'text' && item.content) {
+            // Sử dụng SVG để render text
+            const svgText = `
+                <svg width="${item.width}" height="${item.height}">
+                    <style>
+                        .text { 
+                            font-family: "${item.fontFamily || 'Arial'}";
+                            font-size: ${item.fontSize || 16}px; 
+                            fill: ${item.color || '#000'};
+                            font-weight: ${item.fontWeight || 'normal'};
+                            font-style: ${item.fontStyle || 'normal'};
+                            text-decoration: ${item.textDecoration || 'none'};
+                        }
+                    </style>
+                    <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" class="text">${escapeXml(item.content)}</text>
+                </svg>
+            `; // <--- SỬA LỖI Ở ĐÂY
+            itemBuffer = Buffer.from(svgText);
+        }
+
+        if (itemBuffer) {
+            compositeOperations.push({
+                input: itemBuffer,
+                left: Math.round(item.x),
+                top: Math.round(item.y),
+                blend: 'over'
+            });
+        }
+    }
+
+    return sharp(await canvas.toBuffer()).composite(compositeOperations).webp({ quality: 80 }).toBuffer();
+}
+
 // Hàm chính để tạo thumbnail tự động
 async function generateAutomaticThumbnail(pages, backgroundUrl) {
     if (!pages || pages.length === 0) return null;
@@ -137,58 +226,72 @@ const updateTemplateById = async (id, updateData, files = []) => {
         throw new Error('Không tìm thấy mẫu thiệp để cập nhật.');
     }
 
-    // Cập nhật các trường thông tin cơ bản
-    template.title = updateData.title;
-    template.category = updateData.category;
-    template.group = updateData.group;
-    template.type = updateData.type;
-    template.description = updateData.description;
-    template.isActive = updateData.isActive;
-    template.loveGiftsButton = updateData.loveGiftsButton;
+    // Gán các trường dữ liệu đơn giản
+    Object.assign(template, {
+        title: updateData.title,
+        category: updateData.category,
+        group: updateData.group,
+        type: updateData.type,
+        description: updateData.description,
+        isActive: updateData.isActive,
+        loveGiftsButton: updateData.loveGiftsButton,
+    });
     
-    // Cập nhật dữ liệu thiết kế (pages & items)
     const templateDataObject = updateData.templateData;
+    const fileUrlMap = new Map();
 
-    // Xử lý các file ảnh nền của các trang (nếu có)
-    const pageBackgroundFiles = files.filter(f => f.fieldname.startsWith('background_'));
-    if (pageBackgroundFiles.length > 0) {
-        const uploadPromises = pageBackgroundFiles.map(async (file) => {
-            const processedBuffer = await sharp(file.buffer).webp({ quality: 85 }).toBuffer();
-            const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
-            const pageId = file.fieldname.split('_')[1];
-            const pageIndex = templateDataObject.pages.findIndex(p => p.id === pageId);
-            
-            // ======================= DÒNG SỬA LỖI QUAN TRỌNG =======================
-            // Cập nhật URL mới vào đúng trang trong object templateDataObject
-            // để hàm generateAutomaticThumbnail có dữ liệu chính xác.
-            if (pageIndex !== -1) {
-                templateDataObject.pages[pageIndex].backgroundImage = url;
-            }
-            // ======================================================================
-        });
-        await Promise.all(uploadPromises);
-    }
+    // 1. Tải TẤT CẢ các file lên R2 song song và tạo một map tra cứu
+    const uploadPromises = files.map(async (file) => {
+        const processedBuffer = await sharp(file.buffer)
+            .resize({ width: 1920, fit: 'inside', withoutEnlargement: true })
+            .webp({ quality: 85 })
+            .toBuffer();
+        const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
+        fileUrlMap.set(file.fieldname, url); // Dùng fieldname làm key
+    });
+    await Promise.all(uploadPromises);
+
+    // 2. Cập nhật các URL đã tải lên vào đúng vị trí trong templateData
     
-    // Gán dữ liệu thiết kế đã được cập nhật (với URL ảnh nền đúng) vào template
-    template.templateData = templateDataObject;
-
-    // Xử lý ảnh nền của THUMBNAIL
-    const thumbnailBgFile = files.find(f => f.fieldname === 'thumbnailBackground');
-    if (thumbnailBgFile) {
-        const processedBgBuffer = await sharp(thumbnailBgFile.buffer).webp({ quality: 80 }).toBuffer();
-        const { url } = await uploadFileToR2(processedBgBuffer, 'image/webp');
-        template.thumbnailBackgroundSrc = url;
+    // 2a. Cập nhật ảnh nền cho thumbnail
+    if (fileUrlMap.has('thumbnailBackground')) {
+        template.thumbnailBackgroundSrc = fileUrlMap.get('thumbnailBackground');
     } else if (updateData.thumbnailBackgroundSrc === '') {
         template.thumbnailBackgroundSrc = '';
     }
+
+    // 2b. Cập nhật ảnh nền cho các trang và các ảnh item bên trong canvas
+    if (templateDataObject.pages && Array.isArray(templateDataObject.pages)) {
+        templateDataObject.pages.forEach(page => {
+            // Xử lý ảnh nền của trang
+            const bgFieldname = `background_${page.id}`;
+            if (fileUrlMap.has(bgFieldname)) {
+                page.backgroundImage = fileUrlMap.get(bgFieldname);
+            }
+
+            // Xử lý ảnh item
+            if (page.items && Array.isArray(page.items)) {
+                page.items.forEach(item => {
+                    if (item.type === 'image' && typeof item.url === 'string' && item.url.startsWith('__FILE_PLACEHOLDER_')) {
+                        const placeholder = item.url.replace('__FILE_PLACEHOLDER_', '');
+                        if (fileUrlMap.has(placeholder)) {
+                            item.url = fileUrlMap.get(placeholder);
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    // 3. Gán templateData đã được "làm sạch" vào document
+    template.templateData = templateDataObject;
     
-    // TỰ ĐỘNG TẠO THUMBNAIL MỚI
-    // Bây giờ, template.templateData.pages đã chứa URL ảnh nền chính xác
+    // 4. TẠO THUMBNAIL TỰ ĐỘNG (Bây giờ đã có đủ URL hợp lệ)
     if (template.templateData && template.templateData.pages && template.templateData.pages.length > 0) {
         const thumbnailBuffer = await generateAutomaticThumbnail(template.templateData.pages, template.thumbnailBackgroundSrc);
         if (thumbnailBuffer) {
             const { url: newThumbnailUrl } = await uploadFileToR2(thumbnailBuffer, 'image/webp');
-            template.imgSrc = newThumbnailUrl; 
+            template.imgSrc = newThumbnailUrl;
         }
     }
     
@@ -196,6 +299,7 @@ const updateTemplateById = async (id, updateData, files = []) => {
     await template.save();
     return template;
 };
+
 
 
 const deleteTemplateById = async (id) => {
