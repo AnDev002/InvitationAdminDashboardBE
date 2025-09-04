@@ -327,20 +327,17 @@ const createTemplate = async (req, res, next) => {
 
 const updateTemplate = async (req, res, next) => {
     try {
-        if (typeof req.body.templateData !== 'string') {
-            throw new Error('templateData phải là một chuỗi JSON.');
-        }
-
+        // Chuyển đổi dữ liệu chuỗi JSON từ form-data thành object
         const updatePayload = {
             ...req.body,
-            templateData: JSON.parse(req.body.templateData),
+            templateData: JSON.parse(req.body.templateData || '{}'),
             loveGiftsButton: req.body.loveGiftsButton ? JSON.parse(req.body.loveGiftsButton) : null,
         };
 
         const updatedTemplate = await invitationTemplateService.updateTemplateById(
             req.params.id,
             updatePayload,
-            req.files
+            req.files // Truyền tất cả các files vào service
         );
 
         if (!updatedTemplate) {
@@ -349,11 +346,14 @@ const updateTemplate = async (req, res, next) => {
         res.status(200).json({ status: 'success', data: updatedTemplate });
 
     } catch (error) {
-        console.error("Lỗi xảy ra trong controller updateTemplate:", error);
-        console.error("Error Body nhận được:", req.body);
+        if (error instanceof SyntaxError) {
+            return res.status(400).json({ message: 'Lỗi cú pháp: Dữ liệu templateData hoặc loveGiftsButton không phải là JSON hợp lệ.' });
+        }
+        console.error("Lỗi khi cập nhật template:", error);
         next(error);
     }
 };
+
 
 const deleteTemplate = async (req, res, next) => {
     try {

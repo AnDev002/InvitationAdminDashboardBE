@@ -2,7 +2,123 @@
 const InvitationTemplate = require('../models/invitationTemplate.model');
 const { uploadFileToR2 } = require('./r2.service'); 
 const sharp = require('sharp');
+const axios = require('axios');
 
+async function renderPageToBuffer(page) {
+    if (!page) return null;
+
+    // 1. Tạo canvas nền với màu sắc
+    let canvas = sharp({
+        create: {
+            width: page.canvasWidth,
+            height: page.canvasHeight,
+            channels: 4,
+            background: page.backgroundColor || '#FFFFFF'
+        }
+    });
+
+    // 2. Thêm ảnh nền của trang (nếu có)
+    if (page.backgroundImage) {
+        try {
+            const bgResponse = await axios.get(page.backgroundImage, { responseType: 'arraybuffer' });
+            canvas = sharp(await canvas.toBuffer()).composite([{ input: Buffer.from(bgResponse.data) }]);
+        } catch (e) { console.error("Thumbnail Gen Error: Cannot fetch page background.", e); }
+    }
+
+    // 3. Sắp xếp và render các đối tượng (text, image)
+    const compositeOperations = [];
+    const sortedItems = [...(page.items || [])].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+
+    for (const item of sortedItems) {
+        if (!item.visible) continue;
+
+        let itemBuffer;
+        if (item.type === 'image' && item.url) {
+            try {
+                const itemImgRes = await axios.get(item.url, { responseType: 'arraybuffer' });
+                itemBuffer = await sharp(Buffer.from(itemImgRes.data))
+                    .resize(Math.round(item.width), Math.round(item.height))
+                    .toBuffer();
+            } catch (e) { console.error(`Thumbnail Gen Error: Cannot fetch item image ${item.url}`, e); continue; }
+        } else if (item.type === 'text' && item.content) {
+            // Sử dụng SVG để render text, hỗ trợ cơ bản cho font và style
+            const svgText = `
+                <svg width="${item.width}" height="${item.height}">
+                    <style>
+                        .text { 
+                            font-family: "${item.fontFamily || 'Arial'}";
+                            font-size: ${item.fontSize || 16}px; 
+                            fill: ${item.color || '#000'};
+                            font-weight: ${item.fontWeight || 'normal'};
+                            font-style: ${item.fontStyle || 'normal'};
+                            text-decoration: ${item.textDecoration || 'none'};
+                        }
+                    </style>
+                    <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" class="text">${item.content}</text>
+                </svg>
+            `;
+            itemBuffer = Buffer.from(svgText);
+        }
+
+        if (itemBuffer) {
+            compositeOperations.push({
+                input: itemBuffer,
+                left: Math.round(item.x),
+                top: Math.round(item.y),
+                blend: 'over'
+            });
+        }
+    }
+
+    return sharp(await canvas.toBuffer()).composite(compositeOperations).webp({ quality: 80 }).toBuffer();
+}
+
+// Hàm chính để tạo thumbnail tự động
+async function generateAutomaticThumbnail(pages, backgroundUrl) {
+    if (!pages || pages.length === 0) return null;
+
+    if (pages.length === 1) {
+        // Trường hợp chỉ có 1 trang
+        return await renderPageToBuffer(pages[0]);
+    } else {
+        // Trường hợp có 2 trang trở lên
+        const page1Buffer = await renderPageToBuffer(pages[0]);
+        const page2Buffer = await renderPageToBuffer(pages[1]);
+        if (!page1Buffer || !page2Buffer) return null;
+
+        const page1Meta = await sharp(page1Buffer).metadata();
+        const W = page1Meta.width;
+        const H = page1Meta.height;
+        
+        const offsetX = Math.round(W * 0.08);
+        const offsetY = Math.round(H * 0.12);
+
+        const containerWidth = W + offsetX;
+        const containerHeight = H + offsetY;
+
+        const resizedPage2Buffer = await sharp(page2Buffer).resize(W, H).toBuffer();
+
+        let finalCanvas;
+        if (backgroundUrl) {
+            try {
+                const bgRes = await axios.get(backgroundUrl, { responseType: 'arraybuffer' });
+                finalCanvas = sharp(Buffer.from(bgRes.data)).resize(containerWidth, containerHeight);
+            } catch (e) { 
+                console.error("Thumbnail Gen Error: Cannot fetch background.", e);
+                finalCanvas = sharp({ create: { width: containerWidth, height: containerHeight, channels: 4, background: '#F9FAFB' } });
+            }
+        } else {
+            finalCanvas = sharp({ create: { width: containerWidth, height: containerHeight, channels: 4, background: '#F9FAFB' } });
+        }
+        
+        const compositeOps = [
+            { input: resizedPage2Buffer, top: 0, left: 0 },
+            { input: page1Buffer, top: offsetY, left: offsetX }
+        ];
+
+        return finalCanvas.composite(compositeOps).webp({ quality: 85 }).toBuffer();
+    }
+}
 const queryInvitationTemplates = (filter) => {
   return InvitationTemplate.find({ ...filter }).sort({ displayOrder: 1, createdAt: -1 });
 };
@@ -21,6 +137,7 @@ const updateTemplateById = async (id, updateData, files = []) => {
         throw new Error('Không tìm thấy mẫu thiệp để cập nhật.');
     }
 
+    // Cập nhật các trường thông tin cơ bản
     template.title = updateData.title;
     template.category = updateData.category;
     template.group = updateData.group;
@@ -29,78 +146,48 @@ const updateTemplateById = async (id, updateData, files = []) => {
     template.isActive = updateData.isActive;
     template.loveGiftsButton = updateData.loveGiftsButton;
     
+    // Cập nhật dữ liệu thiết kế (pages & items)
     const templateDataObject = updateData.templateData;
 
-    if (files && files.length > 0) {
-        const fileUrlMap = new Map();
-        const uploadPromises = files.map(async (file) => {
-            const processedBuffer = await sharp(file.buffer)
-                .resize({ width: 1920, fit: 'inside', withoutEnlargement: true })
-                .webp({ quality: 85 })
-                .toBuffer();
+    // Xử lý các file ảnh nền của các trang (nếu có)
+    const pageBackgroundFiles = files.filter(f => f.fieldname.startsWith('background_'));
+    if (pageBackgroundFiles.length > 0) {
+        const uploadPromises = pageBackgroundFiles.map(async (file) => {
+            const processedBuffer = await sharp(file.buffer).webp({ quality: 85 }).toBuffer();
             const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
-
-            if (!fileUrlMap.has(file.fieldname)) {
-                fileUrlMap.set(file.fieldname, []);
+            const pageId = file.fieldname.split('_')[1];
+            const pageIndex = templateDataObject.pages.findIndex(p => p.id === pageId);
+            if (pageIndex !== -1) {
+                templateDataObject.pages[pageIndex].backgroundImage = url;
             }
-            fileUrlMap.get(file.fieldname).push(url);
         });
         await Promise.all(uploadPromises);
-
-        if (templateDataObject.pages && Array.isArray(templateDataObject.pages)) {
-            templateDataObject.pages.forEach(page => {
-                const fieldName = `background_${page.id}`;
-                if (fileUrlMap.has(fieldName)) {
-                    page.backgroundImage = fileUrlMap.get(fieldName)[0];
-                }
-            });
-        }
-        
-        const settingsObject = templateDataObject.settings || {};
-        const replacePlaceholdersInArray = (arr, fieldName, imageKey) => {
-            if (Array.isArray(arr) && fileUrlMap.has(imageKey)) {
-                let urlIndex = 0;
-                return arr.map(item => {
-                    if (item[fieldName] && String(item[fieldName]).startsWith('__FILE_PLACEHOLDER_')) {
-                        const newUrl = fileUrlMap.get(imageKey)[urlIndex];
-                        if (newUrl) {
-                            urlIndex++;
-                            return { ...item, [fieldName]: newUrl };
-                        }
-                    }
-                    return item;
-                });
-            }
-            return arr;
-        };
-
-        if (fileUrlMap.has('groomImageUrl')) settingsObject.groomImageUrl = fileUrlMap.get('groomImageUrl')[0];
-        if (fileUrlMap.has('brideImageUrl')) settingsObject.brideImageUrl = fileUrlMap.get('brideImageUrl')[0];
-        
-        settingsObject.events = replacePlaceholdersInArray(settingsObject.events, 'imageUrl', 'eventImages');
-        settingsObject.participants = replacePlaceholdersInArray(settingsObject.participants, 'imageUrl', 'participantImages');
-        settingsObject.loveStory = replacePlaceholdersInArray(settingsObject.loveStory, 'imageUrl', 'loveStoryImages');
-        settingsObject.qrCodes = replacePlaceholdersInArray(settingsObject.qrCodes, 'url', 'qrCodeImageUrls');
-
-        if (fileUrlMap.has('galleryImages')) {
-            settingsObject.galleryImages = [
-                ...(settingsObject.galleryImages || []).filter(img => !String(img).startsWith('__FILE_PLACEHOLDER_')),
-                ...fileUrlMap.get('galleryImages')
-            ];
-        }
-        if (fileUrlMap.has('bannerImages')) {
-            settingsObject.bannerImages = [
-                ...(settingsObject.bannerImages || []).filter(item => item.url),
-                ...fileUrlMap.get('bannerImages').map(url => ({ id: url, url }))
-            ];
-        }
-
-        templateDataObject.settings = settingsObject;
     }
     
+    // Cập nhật dữ liệu thiết kế vào template
     template.templateData = templateDataObject;
-    template.markModified('templateData');
 
+    // Xử lý ảnh nền của THUMBNAIL
+    const thumbnailBgFile = files.find(f => f.fieldname === 'thumbnailBackground'); // Tên file mới
+    if (thumbnailBgFile) {
+        const processedBgBuffer = await sharp(thumbnailBgFile.buffer).webp({ quality: 80 }).toBuffer();
+        const { url } = await uploadFileToR2(processedBgBuffer, 'image/webp');
+        template.thumbnailBackgroundSrc = url;
+    } else if (updateData.thumbnailBackgroundSrc === '') {
+        // Cho phép xóa ảnh nền
+        template.thumbnailBackgroundSrc = '';
+    }
+    
+    // TỰ ĐỘNG TẠO THUMBNAIL MỚI
+    if (template.templateData && template.templateData.pages && template.templateData.pages.length > 0) {
+        const thumbnailBuffer = await generateAutomaticThumbnail(template.templateData.pages, template.thumbnailBackgroundSrc);
+        if (thumbnailBuffer) {
+            const { url: newThumbnailUrl } = await uploadFileToR2(thumbnailBuffer, 'image/webp');
+            template.imgSrc = newThumbnailUrl; // Ghi đè imgSrc cũ bằng ảnh mới tạo
+        }
+    }
+    
+    template.markModified('templateData');
     await template.save();
     return template;
 };
