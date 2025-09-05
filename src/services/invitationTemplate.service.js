@@ -1,6 +1,6 @@
 // AdminBE/services/invitationTemplate.service.js
 const InvitationTemplate = require('../models/invitationTemplate.model');
-const { uploadFileToR2 } = require('./r2.service');
+const { uploadFileToR2 } = require('./r2.service'); 
 const sharp = require('sharp');
 const axios = require('axios');
 
@@ -26,10 +26,10 @@ function sanitizeCssValue(value) {
 }
 // --- KẾT THÚC THAY ĐỔI ---
 
-// --- START: FINAL AND MORE ROBUST RENDER FUNCTION ---
+// --- BẮT ĐẦU THAY THẾ: HÀM RENDER ĐÃ ĐƯỢC NÂNG CẤP TOÀN DIỆN ---
 async function renderPageToBuffer(page) {
     if (!page || !page.canvasWidth || !page.canvasHeight || page.canvasWidth <= 0 || page.canvasHeight <= 0) {
-        console.error("Thumbnail Gen Error: Dữ liệu trang không hợp lệ hoặc thiếu kích thước canvas hợp lệ.", { pageId: page?.id });
+        console.error("Thumbnail Gen Error: Dữ liệu trang không hợp lệ hoặc thiếu kích thước canvas.", { pageId: page?.id });
         return null;
     }
 
@@ -46,20 +46,19 @@ async function renderPageToBuffer(page) {
 
         let canvasBuffer;
 
-        // 2. Xử lý và ghép ảnh nền (NẾU CÓ)
+        // 2. Xử lý và ghép ảnh nền (NẾU CÓ) một cách an toàn
         if (page.backgroundImage && typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('http')) {
             try {
                 const bgResponse = await axios.get(page.backgroundImage, { responseType: 'arraybuffer', timeout: 7000 });
-                // Thử xử lý buffer bằng sharp, đây là bước kiểm tra quyết định
-                await sharp(bgResponse.data).metadata(); // Thử đọc metadata, sẽ báo lỗi nếu không phải ảnh
+                // KIỂM TRA QUYẾT ĐỊNH: Thử đọc metadata, sẽ báo lỗi nếu không phải ảnh hợp lệ
+                await sharp(bgResponse.data).metadata(); 
                 const resizedBgBuffer = await sharp(bgResponse.data)
                     .resize(page.canvasWidth, page.canvasHeight, { fit: 'cover' })
                     .toBuffer();
                 canvasBuffer = await baseCanvas.composite([{ input: resizedBgBuffer }]).toBuffer();
             } catch (e) {
-                // Lỗi có thể từ axios (vd: 404) hoặc sharp (unsupported format)
                 console.error(`Thumbnail Gen Error: Không thể tải hoặc xử lý ảnh nền: ${page.backgroundImage}. Lý do: ${e.message}`);
-                canvasBuffer = await baseCanvas.toBuffer(); // Dùng canvas gốc nếu có lỗi
+                canvasBuffer = await baseCanvas.toBuffer(); // Dùng canvas gốc nếu ảnh nền lỗi
             }
         } else {
             canvasBuffer = await baseCanvas.toBuffer();
@@ -74,29 +73,29 @@ async function renderPageToBuffer(page) {
 
             let itemBuffer;
 
-            // Bọc toàn bộ logic tạo buffer cho mỗi item trong một try...catch riêng
+            // Bọc toàn bộ logic tạo buffer cho MỖI item trong một try...catch riêng
             try {
                 // Xử lý ảnh
                 if (item.type === 'image' && item.url && typeof item.url === 'string' && item.url.startsWith('http')) {
                     const itemImgRes = await axios.get(item.url, { responseType: 'arraybuffer', timeout: 7000 });
+                    // KIỂM TRA QUYẾT ĐỊNH
                     await sharp(itemImgRes.data).metadata();
                     itemBuffer = await sharp(itemImgRes.data)
                         .resize(Math.round(item.width), Math.round(item.height))
                         .toBuffer();
                 }
-                // Xử lý text
+                // Xử lý text (đã được làm an toàn trong file của bạn)
                 else if (item.type === 'text' && item.content) {
                     const svgWidth = Math.max(1, Math.round(item.width || 100));
                     const svgHeight = Math.max(1, Math.round(item.height || 50));
                     const fontSize = Math.max(1, item.fontSize || 16);
 
-                    // --- BẮT ĐẦU THAY ĐỔI: "Làm sạch" các giá trị trước khi đưa vào SVG ---
+                    // **NÂNG CẤP**: "Làm sạch" các giá trị CSS trước khi đưa vào SVG
                     const fontFamily = sanitizeCssValue(item.fontFamily || 'Arial');
                     const color = sanitizeCssValue(item.color || '#000');
                     const fontWeight = sanitizeCssValue(item.fontWeight || 'normal');
                     const fontStyle = sanitizeCssValue(item.fontStyle || 'normal');
                     const textDecoration = sanitizeCssValue(item.textDecoration || 'none');
-                    // --- KẾT THÚC THAY ĐỔI ---
 
                     const svgText = `
                         <svg width="${svgWidth}" height="${svgHeight}">
@@ -115,8 +114,7 @@ async function renderPageToBuffer(page) {
                         </svg>
                     `;
                     const svgBuffer = Buffer.from(svgText);
-                    // **KIỂM TRA QUYẾT ĐỊNH**: Thử xử lý SVG buffer bằng sharp
-                    await sharp(svgBuffer).metadata();
+                    await sharp(svgBuffer).metadata(); // Kiểm tra SVG hợp lệ
                     itemBuffer = svgBuffer;
                 }
 
@@ -130,25 +128,25 @@ async function renderPageToBuffer(page) {
                 }
             } catch (e) {
                 // Nếu có bất kỳ lỗi nào (tải ảnh, xử lý ảnh, tạo SVG lỗi), ghi log và bỏ qua item đó
-                console.error(`Thumbnail Gen Error: Skipping invalid item. Reason: ${e.message}`, { 
+                console.error(`Thumbnail Gen Error: Bỏ qua đối tượng không hợp lệ. Lý do: ${e.message}`, { 
                     pageId: page.id, 
                     itemId: item.id, 
                     itemType: item.type, 
-                    itemUrl: item.url,
-                    itemContent: item.type === 'text' ? (item.content || '').substring(0, 50) + '...' : undefined
+                    itemUrl: item.url
                 });
                 continue; // Chuyển sang item tiếp theo
             }
         }
         
-        // 4. Ghép tất cả các layer item và trả về kết quả
+        // 4. Ghép tất cả các layer item hợp lệ và trả về kết quả
         return await sharp(canvasBuffer).composite(compositeOperations).webp({ quality: 80 }).toBuffer();
     } catch (error) {
         console.error(`FATAL Thumbnail Gen Error on page render: ${error.message}`, { pageId: page?.id });
         return null;
     }
 }
-// --- END: FINAL AND MORE ROBUST RENDER FUNCTION ---
+
+// --- KẾT THÚC THAY THẾ ---
 
 async function generateAutomaticThumbnail(pages, backgroundUrl) {
     if (!pages || pages.length === 0) return null;
@@ -254,18 +252,23 @@ const updateTemplateById = async (id, updateData, files = []) => {
     // ======================= START: LOGIC SỬA LỖI =======================
     if (templateDataObject.pages && Array.isArray(templateDataObject.pages)) {
         templateDataObject.pages.forEach(page => {
-            // 1. Cập nhật ảnh nền cho trang
-            const bgFieldname = `background_${page.id}`;
-            if (fileUrlMap.has(bgFieldname)) {
-                page.backgroundImage = fileUrlMap.get(bgFieldname);
+            // 1. Cập nhật ảnh nền cho trang từ placeholder
+            if (typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('__FILE_PLACEHOLDER_')) {
+                const fieldName = page.backgroundImage.replace('__FILE_PLACEHOLDER_', '');
+                if (fileUrlMap.has(fieldName)) {
+                    page.backgroundImage = fileUrlMap.get(fieldName);
+                }
             }
 
-            // 2. Cập nhật URL cho các item hình ảnh
+            // 2. Cập nhật URL cho các item hình ảnh từ placeholder
             if (page.items && Array.isArray(page.items)) {
                 page.items.forEach(item => {
-                    const itemImageFieldname = `itemImage_${page.id}_${item.id}`;
-                    if (item.type === 'image' && fileUrlMap.has(itemImageFieldname)) {
-                        item.url = fileUrlMap.get(itemImageFieldname);
+                    const itemImagePlaceholderPrefix = `__FILE_PLACEHOLDER_itemImage_${page.id}_${item.id}`;
+                    if (item.type === 'image' && typeof item.url === 'string' && item.url.startsWith('__FILE_PLACEHOLDER_')) {
+                         const fieldName = item.url.replace('__FILE_PLACEHOLDER_', '');
+                         if (fileUrlMap.has(fieldName)) {
+                            item.url = fileUrlMap.get(fieldName);
+                         }
                     }
                 });
             }
@@ -276,6 +279,7 @@ const updateTemplateById = async (id, updateData, files = []) => {
     template.templateData = templateDataObject;
     
     if (template.templateData && template.templateData.pages && template.templateData.pages.length > 0) {
+        // Hàm render thumbnail sẽ được gọi ở đây
         const thumbnailBuffer = await generateAutomaticThumbnail(template.templateData.pages, template.thumbnailBackgroundSrc);
         if (thumbnailBuffer) {
             const { url: newThumbnailUrl } = await uploadFileToR2(thumbnailBuffer, 'image/webp');
@@ -288,10 +292,9 @@ const updateTemplateById = async (id, updateData, files = []) => {
     template.markModified('templateData');
     await template.save();
     
-    // Trả về bản ghi mới nhất từ DB để đảm bảo dữ liệu nhất quán
-    const savedTemplate = await InvitationTemplate.findById(id);
-    return savedTemplate;
+    return await InvitationTemplate.findById(id);
 };
+
 
 const deleteTemplateById = async (id) => {
   await InvitationTemplate.findByIdAndDelete(id);
