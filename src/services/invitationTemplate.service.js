@@ -246,54 +246,36 @@ const updateTemplateById = async (id, updateData, files = []) => {
                 .webp({ quality: 85 })
                 .toBuffer();
             const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
-            fileUrlMap.set(file.fieldname, url);
+            const pageId = file.fieldname.split('_')[1];
+            const pageIndex = templateDataObject.pages.findIndex(p => p.id === pageId);
+            if (pageIndex !== -1) {
+                templateDataObject.pages[pageIndex].backgroundImage = url;
+            }
         });
         await Promise.all(uploadPromises);
     }
+    
+    // Cập nhật dữ liệu thiết kế vào template
+    template.templateData = templateDataObject;
 
-    if (fileUrlMap.has('thumbnailBackground')) {
-        template.thumbnailBackgroundSrc = fileUrlMap.get('thumbnailBackground');
+    // Xử lý ảnh nền của THUMBNAIL
+    const thumbnailBgFile = files.find(f => f.fieldname === 'thumbnailBackground'); // Tên file mới
+    if (thumbnailBgFile) {
+        const processedBgBuffer = await sharp(thumbnailBgFile.buffer).webp({ quality: 80 }).toBuffer();
+        const { url } = await uploadFileToR2(processedBgBuffer, 'image/webp');
+        template.thumbnailBackgroundSrc = url;
     } else if (updateData.thumbnailBackgroundSrc === '') {
+        // Cho phép xóa ảnh nền
         template.thumbnailBackgroundSrc = '';
     }
-
-    // ======================= START: LOGIC SỬA LỖI =======================
-    if (templateDataObject.pages && Array.isArray(templateDataObject.pages)) {
-        templateDataObject.pages.forEach(page => {
-            // 1. Cập nhật ảnh nền cho trang từ placeholder
-            if (typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('__FILE_PLACEHOLDER_')) {
-                const fieldName = page.backgroundImage.replace('__FILE_PLACEHOLDER_', '');
-                if (fileUrlMap.has(fieldName)) {
-                    page.backgroundImage = fileUrlMap.get(fieldName);
-                }
-            }
-
-            // 2. Cập nhật URL cho các item hình ảnh từ placeholder
-            if (page.items && Array.isArray(page.items)) {
-                page.items.forEach(item => {
-                    const itemImagePlaceholderPrefix = `__FILE_PLACEHOLDER_itemImage_${page.id}_${item.id}`;
-                    if (item.type === 'image' && typeof item.url === 'string' && item.url.startsWith('__FILE_PLACEHOLDER_')) {
-                         const fieldName = item.url.replace('__FILE_PLACEHOLDER_', '');
-                         if (fileUrlMap.has(fieldName)) {
-                            item.url = fileUrlMap.get(fieldName);
-                         }
-                    }
-                });
-            }
-        });
-    }
-    // ======================= END: LOGIC SỬA LỖI =======================
-
-    template.templateData = templateDataObject;
     
+    // TỰ ĐỘNG TẠO THUMBNAIL MỚI
     if (template.templateData && template.templateData.pages && template.templateData.pages.length > 0) {
         // Hàm render thumbnail sẽ được gọi ở đây
         const thumbnailBuffer = await generateAutomaticThumbnail(template.templateData.pages, template.thumbnailBackgroundSrc);
         if (thumbnailBuffer) {
             const { url: newThumbnailUrl } = await uploadFileToR2(thumbnailBuffer, 'image/webp');
-            template.imgSrc = newThumbnailUrl;
-        } else {
-             console.warn(`Cảnh báo: Không thể tạo ảnh thumbnail cho mẫu "${template.title}". Ảnh đại diện sẽ không được cập nhật.`);
+            template.imgSrc = newThumbnailUrl; // Ghi đè imgSrc cũ bằng ảnh mới tạo
         }
     }
     
@@ -302,7 +284,6 @@ const updateTemplateById = async (id, updateData, files = []) => {
     
     return await InvitationTemplate.findById(id);
 };
-
 
 const deleteTemplateById = async (id) => {
   await InvitationTemplate.findByIdAndDelete(id);
