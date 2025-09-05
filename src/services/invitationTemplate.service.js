@@ -29,12 +29,12 @@ function sanitizeCssValue(value) {
 // --- BẮT ĐẦU THAY THẾ: HÀM RENDER ĐÃ ĐƯỢC NÂNG CẤP TOÀN DIỆN ---
 async function renderPageToBuffer(page) {
     if (!page || !page.canvasWidth || !page.canvasHeight || page.canvasWidth <= 0 || page.canvasHeight <= 0) {
-        console.error("Thumbnail Gen Error: Dữ liệu trang không hợp lệ hoặc thiếu kích thước canvas.", { pageId: page?.id });
+        console.error("Thumbnail Gen Error: Invalid page data or missing canvas dimensions.", { pageId: page?.id });
         return null;
     }
 
     try {
-        // 1. Tạo canvas nền ban đầu
+        // 1. Create initial background canvas
         const baseCanvas = sharp({
             create: {
                 width: page.canvasWidth,
@@ -46,51 +46,53 @@ async function renderPageToBuffer(page) {
 
         let canvasBuffer;
 
-        // 2. Xử lý và ghép ảnh nền (NẾU CÓ) một cách an toàn
+        // 2. Safely process and composite the background image (IF IT EXISTS)
         if (page.backgroundImage && typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('http')) {
             try {
                 const bgResponse = await axios.get(page.backgroundImage, { responseType: 'arraybuffer', timeout: 7000 });
-                // KIỂM TRA QUYẾT ĐỊNH: Thử đọc metadata, sẽ báo lỗi nếu không phải ảnh hợp lệ
+                // CRITICAL CHECK: Attempt to read metadata, will throw error if not a valid image
                 await sharp(bgResponse.data).metadata(); 
                 const resizedBgBuffer = await sharp(bgResponse.data)
                     .resize(page.canvasWidth, page.canvasHeight, { fit: 'cover' })
                     .toBuffer();
                 canvasBuffer = await baseCanvas.composite([{ input: resizedBgBuffer }]).toBuffer();
             } catch (e) {
-                console.error(`Thumbnail Gen Error: Không thể tải hoặc xử lý ảnh nền: ${page.backgroundImage}. Lý do: ${e.message}`);
-                canvasBuffer = await baseCanvas.toBuffer(); // Dùng canvas gốc nếu ảnh nền lỗi
+                console.error(`Thumbnail Gen Error: Could not load or process background image: ${page.backgroundImage}. Reason: ${e.message}`);
+                canvasBuffer = await baseCanvas.toBuffer(); // Use original canvas if background image fails
             }
         } else {
             canvasBuffer = await baseCanvas.toBuffer();
         }
 
-        // 3. Chuẩn bị các đối tượng (items) để ghép
+        // 3. Prepare items (objects) for compositing
         const compositeOperations = [];
-        const sortedItems = [...(page.items || [])].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+        // Ensure items is an array before sorting
+        const sortedItems = Array.isArray(page.items) ? [...page.items].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)) : [];
 
         for (const item of sortedItems) {
-            if (!item.visible) continue;
+            // Skip invisible items
+            if (item.visible === false) continue;
 
             let itemBuffer;
 
-            // Bọc toàn bộ logic tạo buffer cho MỖI item trong một try...catch riêng
+            // Wrap the buffer creation logic for EACH item in its own try...catch block
             try {
-                // Xử lý ảnh
+                // Handle images
+                // CRITICAL FIX: Ensure item.url is a non-empty string before processing
                 if (item.type === 'image' && item.url && typeof item.url === 'string' && item.url.startsWith('http')) {
                     const itemImgRes = await axios.get(item.url, { responseType: 'arraybuffer', timeout: 7000 });
-                    // KIỂM TRA QUYẾT ĐỊNH
+                    // CRITICAL CHECK
                     await sharp(itemImgRes.data).metadata();
                     itemBuffer = await sharp(itemImgRes.data)
                         .resize(Math.round(item.width), Math.round(item.height))
                         .toBuffer();
                 }
-                // Xử lý text (đã được làm an toàn trong file của bạn)
+                // Handle text (already safe in your file)
                 else if (item.type === 'text' && item.content) {
                     const svgWidth = Math.max(1, Math.round(item.width || 100));
                     const svgHeight = Math.max(1, Math.round(item.height || 50));
                     const fontSize = Math.max(1, item.fontSize || 16);
-
-                    // **NÂNG CẤP**: "Làm sạch" các giá trị CSS trước khi đưa vào SVG
+                    
                     const fontFamily = sanitizeCssValue(item.fontFamily || 'Arial');
                     const color = sanitizeCssValue(item.color || '#000');
                     const fontWeight = sanitizeCssValue(item.fontWeight || 'normal');
@@ -114,10 +116,14 @@ async function renderPageToBuffer(page) {
                         </svg>
                     `;
                     const svgBuffer = Buffer.from(svgText);
-                    await sharp(svgBuffer).metadata(); // Kiểm tra SVG hợp lệ
+                    await sharp(svgBuffer).metadata(); // Validate SVG
                     itemBuffer = svgBuffer;
                 }
-
+                
+                // =========================================================
+                // === FINAL GUARANTEE: Only add valid buffers to the list ===
+                // This check prevents `undefined` inputs in the composite step
+                // =========================================================
                 if (itemBuffer) {
                     compositeOperations.push({
                         input: itemBuffer,
@@ -126,26 +132,28 @@ async function renderPageToBuffer(page) {
                         blend: 'over'
                     });
                 }
+
             } catch (e) {
-                // Nếu có bất kỳ lỗi nào (tải ảnh, xử lý ảnh, tạo SVG lỗi), ghi log và bỏ qua item đó
-                console.error(`Thumbnail Gen Error: Bỏ qua đối tượng không hợp lệ. Lý do: ${e.message}`, { 
+                // If any error occurs (image download, image processing, SVG error), log it and skip the item
+                console.error(`Thumbnail Gen Error: Skipping invalid object. Reason: ${e.message}`, { 
                     pageId: page.id, 
                     itemId: item.id, 
                     itemType: item.type, 
                     itemUrl: item.url
                 });
-                continue; // Chuyển sang item tiếp theo
+                continue; // Move to the next item
             }
         }
         
-        // 4. Ghép tất cả các layer item hợp lệ và trả về kết quả
+        // 4. Composite all valid item layers and return the result
+        // The composite operation is now safe because we filtered out invalid inputs
         return await sharp(canvasBuffer).composite(compositeOperations).webp({ quality: 80 }).toBuffer();
     } catch (error) {
+        // This catches errors in the main flow (like the final sharp() call itself)
         console.error(`FATAL Thumbnail Gen Error on page render: ${error.message}`, { pageId: page?.id });
         return null;
     }
 }
-
 // --- KẾT THÚC THAY THẾ ---
 
 async function generateAutomaticThumbnail(pages, backgroundUrl) {
