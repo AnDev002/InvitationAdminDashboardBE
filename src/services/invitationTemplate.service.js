@@ -1,6 +1,6 @@
 // AdminBE/services/invitationTemplate.service.js
 const InvitationTemplate = require('../models/invitationTemplate.model');
-const { uploadFileToR2 } = require('./r2.service'); 
+const { uploadFileToR2 } = require('./r2.service');
 const sharp = require('sharp');
 const axios = require('axios');
 
@@ -411,4 +411,3 @@ module.exports = {
   reorderTemplates,
   bulkDeleteTemplatesByFilter,
 };
-
