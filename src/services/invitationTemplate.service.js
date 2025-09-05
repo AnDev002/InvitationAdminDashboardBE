@@ -18,6 +18,14 @@ function escapeXml(unsafe) {
     });
 }
 
+// --- BẮT ĐẦU THAY ĐỔI: Thêm hàm "làm sạch" giá trị CSS ---
+function sanitizeCssValue(value) {
+    if (typeof value !== 'string') return '';
+    // Loại bỏ các ký tự có thể phá vỡ thuộc tính style trong SVG
+    return value.replace(/["';]/g, '');
+}
+// --- KẾT THÚC THAY ĐỔI ---
+
 // --- START: FINAL AND MORE ROBUST RENDER FUNCTION ---
 async function renderPageToBuffer(page) {
     if (!page || !page.canvasWidth || !page.canvasHeight || page.canvasWidth <= 0 || page.canvasHeight <= 0) {
@@ -82,16 +90,24 @@ async function renderPageToBuffer(page) {
                     const svgHeight = Math.max(1, Math.round(item.height || 50));
                     const fontSize = Math.max(1, item.fontSize || 16);
 
+                    // --- BẮT ĐẦU THAY ĐỔI: "Làm sạch" các giá trị trước khi đưa vào SVG ---
+                    const fontFamily = sanitizeCssValue(item.fontFamily || 'Arial');
+                    const color = sanitizeCssValue(item.color || '#000');
+                    const fontWeight = sanitizeCssValue(item.fontWeight || 'normal');
+                    const fontStyle = sanitizeCssValue(item.fontStyle || 'normal');
+                    const textDecoration = sanitizeCssValue(item.textDecoration || 'none');
+                    // --- KẾT THÚC THAY ĐỔI ---
+
                     const svgText = `
                         <svg width="${svgWidth}" height="${svgHeight}">
                             <style>
                                 .text { 
-                                    font-family: "${item.fontFamily || 'Arial'}";
+                                    font-family: "${fontFamily}";
                                     font-size: ${fontSize}px; 
-                                    fill: ${item.color || '#000'};
-                                    font-weight: ${item.fontWeight || 'normal'};
-                                    font-style: ${item.fontStyle || 'normal'};
-                                    text-decoration: ${item.textDecoration || 'none'};
+                                    fill: ${color};
+                                    font-weight: ${fontWeight};
+                                    font-style: ${fontStyle};
+                                    text-decoration: ${textDecoration};
                                     white-space: pre-wrap;
                                 }
                             </style>
@@ -119,7 +135,7 @@ async function renderPageToBuffer(page) {
                     itemId: item.id, 
                     itemType: item.type, 
                     itemUrl: item.url,
-                    itemContent: item.type === 'text' ? item.content.substring(0, 50) + '...' : undefined
+                    itemContent: item.type === 'text' ? (item.content || '').substring(0, 50) + '...' : undefined
                 });
                 continue; // Chuyển sang item tiếp theo
             }
