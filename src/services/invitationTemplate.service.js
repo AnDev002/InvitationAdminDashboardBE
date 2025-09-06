@@ -43,6 +43,9 @@ const updateTemplateById = async (id, updateData, files = []) => {
         loveGiftsButton: updateData.loveGiftsButton,
         templateData: updateData.templateData
     });
+    
+    // **ĐÃ XÓA LOGIC XỬ LÝ thumbnailBackgroundSrc TẠI ĐÂY**
+    // Giờ đây chúng ta sẽ không xử lý file ảnh nền cho thumbnail nữa.
 
     // Tìm file thumbnail đã được render sẵn từ frontend
     const thumbnailFile = files.find(f => f.fieldname === 'generatedThumbnail');
