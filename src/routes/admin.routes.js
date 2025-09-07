@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middleware/auth.middleware');
+const { handleBatchUpload } = require('../controllers/asset.controller'); // Sẽ tạo hàm này ở bước sau
 
 // Import controllers
 const adminController = require('../controllers/admin.controller');
@@ -77,6 +78,7 @@ router.post('/templates/bulk-import',
 router.post('/templates', authorize('admin', 'marketing', 'designer'), upload.any(), templateController.createTemplate);
 router.post('/templates/reorder', authorize('admin', 'marketing', 'designer'), templateController.reorderTemplates);
 router.delete('/templates/bulk-delete-by-filter', authorize('admin', 'designer'), templateController.bulkDeleteTemplatesByFilter);
+router.post('/assets/upload-batch', authorize('admin', 'designer'), upload.any(), handleBatchUpload);
 
 // ROUTE ĐỘNG (KHÁI QUÁT) ĐƯỢC ĐẶT Ở SAU CÙNG
 router.get('/templates/:id', authorize('admin', 'designer'), templateController.getTemplateById); // Route này phải nằm sau các route tĩnh ở trên
