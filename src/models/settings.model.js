@@ -44,6 +44,9 @@ const bannerSchema = new mongoose.Schema({
     name: { type: String, required: true }, // Tên để quản lý trong admin (vd: "Banner chính trang chủ")
     displayPage: { type: String, required: true, enum: ['all', 'home', 'shop', 'professional', 'invitations'], default: 'all' }, // Trang sẽ hiển thị banner này
     isEnabled: { type: Boolean, default: true },
+    mediaType: { type: String, enum: ['image', 'video'], default: 'image' },
+    imageUrl: { type: String, default: '' },
+    videoUrl: { type: String, default: '' },
     imageUrl: { type: String, default: '' },
     title: { type: String, default: '' },
     subtitle: { type: String, default: '' },

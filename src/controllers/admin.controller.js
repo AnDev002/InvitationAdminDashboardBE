@@ -1,11 +1,10 @@
-// AdminTrainData/AdminBE/controllers/admin.controller.js
+// AdminBE/controllers/admin.controller.js
 
 const adminService = require('../services/admin.service');
 const _ = require('lodash');
 const sharp = require('sharp');
 const { uploadFileToCloudflare } = require('../services/cloudflare.service.js');
 
-// Dashboard
 exports.getDashboardData = async (req, res, next) => {
     try {
         const { startDate, endDate, role, category } = req.query;
@@ -16,7 +15,6 @@ exports.getDashboardData = async (req, res, next) => {
     }
 };
 
-// Settings
 exports.getSettings = async (req, res, next) => {
     try {
         const settings = await adminService.getSettings();
@@ -34,38 +32,57 @@ exports.updateSettings = async (req, res, next) => {
             const fileUrlMap = new Map();
             const uploadPromises = req.files.map(async (file) => {
                 let fileBuffer = file.buffer;
-                let fileMimeType = file.mimetype;
-
-                if (file.mimetype.startsWith('image/') && file.mimetype !== 'image/gif') {
+                let finalUrl = '';
+                
+                // === START: MODIFICATION ===
+                // Phân biệt xử lý cho video và ảnh
+                if (file.mimetype.startsWith('video/')) {
+                    // Đối với video, upload trực tiếp không qua sharp
+                    const { url } = await uploadFileToCloudflare(fileBuffer);
+                    finalUrl = url;
+                } else if (file.mimetype.startsWith('image/') && file.mimetype !== 'image/gif') {
+                    // Đối với ảnh, xử lý bằng sharp
                     fileBuffer = await sharp(file.buffer)
                         .resize({ width: 1920, fit: 'inside', withoutEnlargement: true })
                         .webp({ quality: 85 })
                         .toBuffer();
+                    const { url } = await uploadFileToCloudflare(fileBuffer);
+                    finalUrl = url;
+                } else {
+                    // Giữ nguyên cho các loại file khác (SVG, GIF...)
+                    const { url } = await uploadFileToCloudflare(fileBuffer);
+                    finalUrl = url;
                 }
+                // === END: MODIFICATION ===
 
-                // THAY ĐỔI: Upload lên Cloudflare
-                const { url } = await uploadFileToCloudflare(fileBuffer);
-                fileUrlMap.set(file.fieldname, url);
+                fileUrlMap.set(file.fieldname, finalUrl);
             });
             await Promise.all(uploadPromises);
-
-            // Gán URL đã upload vào đúng vị trí trong object settingsData
-            // 1. Cập nhật cho banners
+            
             if (Array.isArray(settingsData.banners)) {
                 settingsData.banners.forEach((banner, index) => {
-                    // Tìm file tương ứng với banner này
-                    const fieldName = `banners__${index}__imageUrl`;
+                    // === START: MODIFICATION ===
+                    // Xác định đúng fieldname dựa trên mediaType
+                    const isVideo = banner.mediaType === 'video';
+                    const fieldName = isVideo 
+                        ? `banners__${index}__videoUrl` 
+                        : `banners__${index}__imageUrl`;
+
                     if (fileUrlMap.has(fieldName)) {
-                        banner.imageUrl = fileUrlMap.get(fieldName);
+                        if (isVideo) {
+                            banner.videoUrl = fileUrlMap.get(fieldName);
+                            banner.imageUrl = ''; // Xóa ảnh cũ nếu chuyển sang video
+                        } else {
+                            banner.imageUrl = fileUrlMap.get(fieldName);
+                            banner.videoUrl = ''; // Xóa video cũ nếu chuyển sang ảnh
+                        }
                     }
+                    // === END: MODIFICATION ===
                 });
             }
 
-            // 2. Cập nhật cho các trường ảnh khác (logo, social icons...)
             for (const [fieldName, url] of fileUrlMap.entries()) {
-                // Bỏ qua các file banner đã xử lý ở trên
                 if (!fieldName.startsWith('banners__')) {
-                    // Chuyển đổi `theme__logoUrl` thành `theme.logoUrl` để lodash set giá trị
                     const path = fieldName.replace(/__/g, '.');
                     _.set(settingsData, path, url);
                 }
