@@ -4,6 +4,7 @@ const adminService = require('../services/admin.service');
 const _ = require('lodash');
 const sharp = require('sharp');
 const { uploadFileToCloudflare } = require('../services/cloudflare.service.js');
+const { uploadFileToR2 } = require('../services/r2.service.js'); // Import R2 service
 
 exports.getDashboardData = async (req, res, next) => {
     try {
@@ -31,26 +32,26 @@ exports.updateSettings = async (req, res, next) => {
         if (req.files && req.files.length > 0) {
             const fileUrlMap = new Map();
             const uploadPromises = req.files.map(async (file) => {
-                let fileBuffer = file.buffer;
                 let finalUrl = '';
                 
                 // === START: MODIFICATION ===
-                // Phân biệt xử lý cho video và ảnh
                 if (file.mimetype.startsWith('video/')) {
-                    // Đối với video, upload trực tiếp không qua sharp
-                    const { url } = await uploadFileToCloudflare(fileBuffer);
+                    // Video được tải lên R2
+                    const { url } = await uploadFileToR2(file.buffer, file.mimetype, file.originalname);
                     finalUrl = url;
-                } else if (file.mimetype.startsWith('image/') && file.mimetype !== 'image/gif') {
-                    // Đối với ảnh, xử lý bằng sharp
-                    fileBuffer = await sharp(file.buffer)
+                } else if (file.mimetype.startsWith('image/') && file.mimetype !== 'image/gif' && file.mimetype !== 'image/svg+xml') {
+                    // Ảnh (JPG, PNG,...) được xử lý, chuyển thành webp và tải lên Cloudflare Images
+                    const fileBuffer = await sharp(file.buffer)
                         .resize({ width: 1920, fit: 'inside', withoutEnlargement: true })
                         .webp({ quality: 85 })
                         .toBuffer();
-                    const { url } = await uploadFileToCloudflare(fileBuffer);
+                    
+                    // Gửi buffer đã xử lý và contentType mới ('image/webp')
+                    const { url } = await uploadFileToCloudflare(fileBuffer, 'image/webp');
                     finalUrl = url;
                 } else {
-                    // Giữ nguyên cho các loại file khác (SVG, GIF...)
-                    const { url } = await uploadFileToCloudflare(fileBuffer);
+                    // Các loại file khác (SVG, GIF, Font...) được tải lên R2
+                    const { url } = await uploadFileToR2(file.buffer, file.mimetype, file.originalname);
                     finalUrl = url;
                 }
                 // === END: MODIFICATION ===
@@ -61,8 +62,6 @@ exports.updateSettings = async (req, res, next) => {
             
             if (Array.isArray(settingsData.banners)) {
                 settingsData.banners.forEach((banner, index) => {
-                    // === START: MODIFICATION ===
-                    // Xác định đúng fieldname dựa trên mediaType
                     const isVideo = banner.mediaType === 'video';
                     const fieldName = isVideo 
                         ? `banners__${index}__videoUrl` 
@@ -71,13 +70,12 @@ exports.updateSettings = async (req, res, next) => {
                     if (fileUrlMap.has(fieldName)) {
                         if (isVideo) {
                             banner.videoUrl = fileUrlMap.get(fieldName);
-                            banner.imageUrl = ''; // Xóa ảnh cũ nếu chuyển sang video
+                            banner.imageUrl = '';
                         } else {
                             banner.imageUrl = fileUrlMap.get(fieldName);
-                            banner.videoUrl = ''; // Xóa video cũ nếu chuyển sang ảnh
+                            banner.videoUrl = '';
                         }
                     }
-                    // === END: MODIFICATION ===
                 });
             }
 

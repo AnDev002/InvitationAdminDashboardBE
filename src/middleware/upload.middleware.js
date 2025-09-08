@@ -1,4 +1,5 @@
-// src/middleware/upload.middleware.js
+// AdminBE/middleware/upload.middleware.js
+
 import multer from 'multer';
 import sharp from 'sharp';
 import { uploadFileToR2 } from '../services/r2.service.js';
@@ -19,8 +20,11 @@ const FONT_MIME_TYPES = [
     'application/octet-stream' // Kiểu nhị phân chung, thường được dùng làm dự phòng
 ];
 
+// === START: MODIFICATION ===
+// Cập nhật fileFilter để chấp nhận video
 const fileFilter = (req, file, cb) => {
     const allowedImageMimeTypes = file.mimetype.startsWith('image/');
+    const allowedVideoMimeTypes = file.mimetype.startsWith('video/'); // Thêm dòng này
     const allowedFontMimeTypes = FONT_MIME_TYPES.includes(file.mimetype);
     const allowedZipMimeTypes = [
         'application/zip', 
@@ -28,24 +32,27 @@ const fileFilter = (req, file, cb) => {
         'multipart/x-zip'
     ].includes(file.mimetype);
 
-    if (allowedImageMimeTypes || allowedFontMimeTypes || allowedZipMimeTypes) {
+    // Thêm allowedVideoMimeTypes vào điều kiện if
+    if (allowedImageMimeTypes || allowedFontMimeTypes || allowedZipMimeTypes || allowedVideoMimeTypes) {
         cb(null, true);
     } else {
         if (file.originalname.toLowerCase().endsWith('.zip')) {
             cb(null, true);
             return;
         }
-        cb(new Error('File không hợp lệ! Vui lòng chỉ tải lên ảnh, font chữ hoặc file .zip.'), false);
+        // Cập nhật thông báo lỗi
+        cb(new Error('File không hợp lệ! Vui lòng chỉ tải lên ảnh, video, font chữ hoặc file .zip.'), false);
     }
 };
+// === END: MODIFICATION ===
 
 
-// ++ THAY ĐỔI: Tăng giới hạn file size và số lượng file ++
+// Tăng giới hạn file size cho video
 export const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: { 
-      fileSize: 1024 * 1024 * 10, // Giới hạn 10MB mỗi file
+      fileSize: 1024 * 1024 * 50, // Giới hạn 50MB mỗi file (cho video)
       files: 50 // Giới hạn 50 files mỗi request
   }, 
 });
@@ -78,11 +85,13 @@ export const uploadImageToCloudflare = async (req, res, next) => {
 
   try {
     const { buffer } = req.file;
-    const cfData = await uploadFileToCloudflare(buffer);
+    // Lưu ý: Tên hàm uploadFileToCloudflare có thể cần đổi thành tên chung hơn 
+    // như uploadFileToR2 nếu bạn dùng chung service
+    const cfData = await uploadFileToR2(buffer, req.file.mimetype, req.file.originalname);
 
     // Gắn URL và ID của Cloudflare vào request
     req.file.cfUrl = cfData.url;
-    req.file.cfId = cfData.id;
+    req.file.cfId = cfData.id; // Nếu R2 trả về ID
 
     next();
   } catch (error) {

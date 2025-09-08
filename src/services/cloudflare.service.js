@@ -36,25 +36,41 @@ const getUploadUrl = async () => {
  * Upload file lên Cloudflare. Hàm này đã đúng từ trước
  * và không cần thay đổi.
  */
-export const uploadFileToCloudflare = async (fileBuffer) => {
-    try {
-        const uploadURL = await getUploadUrl();
-        
-        const form = new FormData();
-        form.append('file', fileBuffer, 'image.webp');
+export const uploadFileToCloudflare = async (fileBuffer, contentType) => {
+    if (!process.env.CLOUDFLARE_API_TOKEN || !process.env.CLOUDFLARE_ACCOUNT_ID) {
+        throw new AppError('Cloudflare API token or Account ID is not configured.', 500);
+    }
 
-        const response = await axios.post(uploadURL, form);
+    const url = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/images/v1`;
+
+    try {
+        const form = new FormData();
+        // Tạo một Blob với đúng contentType để FormData gửi đi chính xác
+        form.append('file', fileBuffer, { contentType });
+
+        const response = await axios.post(url, form, {
+            headers: {
+                ...form.getHeaders(),
+                'Authorization': `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
+            },
+        });
+
+        if (!response.data.success) {
+            console.error('Error uploading to Cloudflare Images:', response.data);
+            throw new AppError('Failed to upload file to Cloudflare Images.', 500, response.data.errors);
+        }
 
         const result = response.data.result;
         return {
             id: result.id,
-            url: `https://imagedelivery.net/${CLOUDFLARE_ACCOUNT_HASH}/${result.id}/public`,
+            url: result.variants[0] // Trả về URL của variant mặc định (public)
         };
     } catch (error) {
-        console.error('Error uploading to Cloudflare Images:', error.response?.data);
-        throw new Error('Failed to upload file to Cloudflare Images.');
+        console.error('Axios error during Cloudflare upload:', error.response ? error.response.data : error.message);
+        throw new AppError(error.message || 'An unexpected error occurred during file upload.', error.response?.status || 500);
     }
 };
+
 
 
 // Các hàm deleteFileFromCloudflare và getImageIdFromUrl không thay đổi
