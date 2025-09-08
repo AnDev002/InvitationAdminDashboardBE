@@ -19,7 +19,6 @@ const FONT_MIME_TYPES = [
     'application/octet-stream' // Kiểu nhị phân chung, thường được dùng làm dự phòng
 ];
 
-// Lọc file, cho phép upload ảnh HOẶC FONT
 const fileFilter = (req, file, cb) => {
     const allowedImageMimeTypes = file.mimetype.startsWith('image/');
     const allowedFontMimeTypes = FONT_MIME_TYPES.includes(file.mimetype);
@@ -41,7 +40,6 @@ const fileFilter = (req, file, cb) => {
 };
 
 
-
 // ++ THAY ĐỔI: Tăng giới hạn file size và số lượng file ++
 export const upload = multer({
   storage: storage,
@@ -53,9 +51,7 @@ export const upload = multer({
 });
 
 
-// Middleware để resize ảnh
 export const resizeImage = async (req, res, next) => {
-  // ++ THAY ĐỔI: Bỏ qua resize nếu có nhiều file (cho content blocks)
   if (!req.file || req.files) {
     return next(); 
   }
@@ -75,24 +71,22 @@ export const resizeImage = async (req, res, next) => {
   }
 };
 
-// --- TẠO MIDDLEWARE MỚI ĐỂ UPLOAD LÊN R2 ---
-export const uploadImageToR2 = async (req, res, next) => {
-  // ++ THAY ĐỔI: Bỏ qua nếu có nhiều file (sẽ được xử lý trong controller)
+export const uploadImageToCloudflare = async (req, res, next) => {
   if (!req.file || req.files) {
-    return next(); // Không có file hoặc có nhiều file, bỏ qua
+    return next();
   }
 
   try {
-    const { buffer, mimetype } = req.file;
-    const r2Data = await uploadFileToR2(buffer, mimetype);
+    const { buffer } = req.file;
+    const cfData = await uploadFileToCloudflare(buffer);
 
-    // Gắn URL của R2 vào request để controller có thể sử dụng
-    req.file.r2Url = r2Data.url;
-    req.file.r2Key = r2Data.key; // Lưu lại key để có thể xóa file sau này
+    // Gắn URL và ID của Cloudflare vào request
+    req.file.cfUrl = cfData.url;
+    req.file.cfId = cfData.id;
 
     next();
   } catch (error) {
-    console.error('Error uploading image to R2:', error);
+    console.error('Error uploading image to Cloudflare:', error);
     next(error);
   }
 }

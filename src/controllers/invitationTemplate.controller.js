@@ -6,7 +6,7 @@ const Settings = require('../models/settings.model');
 const invitationTemplateService = require('../services/invitationTemplate.service');
 const APIFeatures = require('../utils/apiFeature');
 const sharp = require('sharp');
-const { uploadFileToR2 } = require('../services/r2.service');
+const { uploadFileToCloudflare } = require('../services/cloudflare.service');
 const xlsx = require('xlsx');
 const AdmZip = require('adm-zip');
 const bulkCreateTemplates = async (req, res, next) => {
@@ -43,7 +43,6 @@ const bulkCreateTemplates = async (req, res, next) => {
         const defaultImgSrc = 'https://placehold.co/400x300/e0e0e0/777?text=Chua+thiet+ke';
 
         const templatesByTitle = rows.reduce((acc, row) => {
-            // Bỏ qua nếu dòng không có tiêu đề hoặc không phải là chuỗi
             const sanitizedTitle = row.title.trim(); 
             if (!acc[sanitizedTitle]) {
                 acc[sanitizedTitle] = [];
@@ -69,7 +68,7 @@ const bulkCreateTemplates = async (req, res, next) => {
                     .resize({ width: 1920, fit: 'inside', withoutEnlargement: true })
                     .webp({ quality: 85 })
                     .toBuffer();
-                const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
+                const { url } = await uploadFileToCloudflare(processedBuffer);
                 return url;
             };
             
@@ -146,18 +145,14 @@ const bulkCreateTemplates = async (req, res, next) => {
         if (error.message.startsWith('Ảnh "')) {
             return res.status(400).json({ message: error.message });
         }
-        // --- BẮT ĐẦU NÂNG CẤP ---
-        // Cung cấp thông báo lỗi chi tiết hơn khi có lỗi trùng lặp từ database
         if (error.code === 11000 || (error.writeErrors && error.writeErrors.some(e => e.err.code === 11000))) {
             let duplicateTitles = [];
             if (error.writeErrors) {
-                // Trích xuất các tiêu đề bị trùng từ thông tin lỗi của MongoDB
                 duplicateTitles = error.writeErrors
-                    .map(err => err.op?.title) // Lấy tiêu đề từ document gây lỗi
-                    .filter(Boolean); // Lọc ra các giá trị undefined/null
+                    .map(err => err.op?.title)
+                    .filter(Boolean);
             }
             
-            // Nếu không lấy được, thử phân tích từ message lỗi (phương án dự phòng)
             if (duplicateTitles.length === 0 && error.message) {
                 const match = error.message.match(/dup key: { title: "([^"]+)" }/);
                 if (match && match[1]) {
@@ -172,7 +167,6 @@ const bulkCreateTemplates = async (req, res, next) => {
 
             return res.status(409).json({ message: errorMessage, duplicates: uniqueDuplicates });
         } 
-        // --- KẾT THÚC NÂNG CẤP ---
         else {
             console.error("Lỗi khi xử lý file Excel:", error);
             next(error);
@@ -194,7 +188,7 @@ const processContentImages = async (htmlContent) => {
             .webp({ quality: 80 })
             .toBuffer();
         
-        const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
+        const { url } = await uploadFileToCloudflare(processedBuffer);
         newHtmlContent = newHtmlContent.replace(imgTag, `<img src="${url}" />`);
     }
     return newHtmlContent;
@@ -284,7 +278,7 @@ const createTemplate = async (req, res, next) => {
                     .resize({ width: 800, fit: 'inside', withoutEnlargement: true })
                     .webp({ quality: 90 })
                     .toBuffer();
-                const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
+                const { url } = await uploadFileToCloudflare(processedBuffer);
                 return { fieldname: file.fieldname, url: url };
             });
 
@@ -332,7 +326,6 @@ const updateTemplate = async (req, res, next) => {
             loveGiftsButton: req.body.loveGiftsButton ? JSON.parse(req.body.loveGiftsButton) : null,
         };
         
-        // Truyền tất cả các file (`req.files`) vào service
         const updatedTemplate = await invitationTemplateService.updateTemplateById(
             req.params.id,
             updatePayload,

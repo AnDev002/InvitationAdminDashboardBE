@@ -1,6 +1,6 @@
 const designAssetService = require('../services/designAsset.service');
 // ++ BẮT ĐẦU THÊM MỚI ++
-const { uploadFileToR2 } = require('../services/r2.service');
+const { uploadFileToCloudflare } = require('../services/cloudflare.service.js');
 const sharp = require('sharp');
 // ++ KẾT THÚC THÊM MỚI ++
 
@@ -23,14 +23,11 @@ const getDesignAssets = async (req, res, next) => {
     }
 };
 
-/**
- * [CONTROLLER MỚI]
- * Tạo một tài sản thiết kế mới.
- */
 const createDesignAsset = async (req, res, next) => {
     try {
         const { name, assetType, category } = req.body;
-        if (!req.file || !req.file.r2Url) {
+        // THAY ĐỔI: Kiểm tra cfUrl
+        if (!req.file || !req.file.cfUrl) {
             return res.status(400).json({ message: 'Vui lòng tải lên một file ảnh.' });
         }
         
@@ -38,7 +35,8 @@ const createDesignAsset = async (req, res, next) => {
             name,
             assetType,
             category: category || 'General',
-            imgSrc: req.file.r2Url
+            // THAY ĐỔI: Lấy cfUrl
+            imgSrc: req.file.cfUrl 
         };
         
         const newAsset = await designAssetService.createAsset(assetData);
@@ -77,13 +75,12 @@ const bulkCreateAssets = async (req, res, next) => {
 
         const parsedMetadata = JSON.parse(metadata);
 
-        // Xử lý và tải các file lên R2 song song
         const uploadPromises = files.map(async (file, index) => {
             const buffer = await sharp(file.buffer)
                 .resize({ width: 512, height: 512, fit: 'inside', withoutEnlargement: true })
                 .webp({ quality: 80 })
                 .toBuffer();
-            const { url } = await uploadFileToR2(buffer, 'image/webp');
+            const { url } = await uploadFileToCloudflare(buffer);
             return {
                 ...parsedMetadata[index], // Lấy name, category, assetType từ metadata
                 imgSrc: url

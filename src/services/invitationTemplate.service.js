@@ -1,18 +1,13 @@
 // AdminBE/services/invitationTemplate.service.js
 const InvitationTemplate = require('../models/invitationTemplate.model');
-const { uploadFileToR2 } = require('./r2.service'); 
+const { uploadFileToCloudflare } = require('./cloudflare.service'); 
 const sharp = require('sharp');
 const axios = require('axios');
 
-// --- BẮT ĐẦU THAY ĐỔI: Thêm hàm "làm sạch" giá trị CSS ---
 function sanitizeCssValue(value) {
     if (typeof value !== 'string') return '';
-    // Loại bỏ các ký tự có thể phá vỡ thuộc tính style trong SVG
     return value.replace(/["';]/g, '');
 }
-// --- KẾT THÚC THAY ĐỔI ---
-
-// --- KẾT THÚC THAY THẾ ---
 
 const queryInvitationTemplates = (filter) => {
   return InvitationTemplate.find({ ...filter }).sort({ displayOrder: 1, createdAt: -1 });
@@ -32,7 +27,6 @@ const updateTemplateById = async (id, updateData, files = []) => {
         throw new Error('Không tìm thấy mẫu thiệp để cập nhật.');
     }
 
-    // Gán các dữ liệu văn bản và JSON
     Object.assign(template, {
         title: updateData.title,
         category: updateData.category,
@@ -44,14 +38,9 @@ const updateTemplateById = async (id, updateData, files = []) => {
         templateData: updateData.templateData
     });
     
-    // **ĐÃ XÓA LOGIC XỬ LÝ thumbnailBackgroundSrc TẠI ĐÂY**
-    // Giờ đây chúng ta sẽ không xử lý file ảnh nền cho thumbnail nữa.
-
-    // Tìm file thumbnail đã được render sẵn từ frontend
     const thumbnailFile = files.find(f => f.fieldname === 'generatedThumbnail');
     if (thumbnailFile) {
-        // Tải lên R2 và cập nhật lại imgSrc
-        const { url: newThumbnailUrl } = await uploadFileToR2(thumbnailFile.buffer, thumbnailFile.mimetype);
+        const { url: newThumbnailUrl } = await uploadFileToCloudflare(thumbnailFile.buffer);
         template.imgSrc = newThumbnailUrl; 
     }
     

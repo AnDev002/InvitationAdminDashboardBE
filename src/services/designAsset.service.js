@@ -1,6 +1,6 @@
 // TrainData/AdminBE/services/designAsset.service.js
 const DesignAsset = require('../models/designAsset.model');
-const { deleteFileFromR2 } = require('./r2.service'); 
+const { deleteFileFromCloudflare, getImageIdFromUrl } = require('./cloudflare.service.js');
 
 /**
  * Lấy tất cả các tài nguyên thiết kế dựa trên loại của chúng.
@@ -34,15 +34,15 @@ const createAsset = async (assetData) => {
 const deleteAssetById = async (assetId) => {
     const asset = await DesignAsset.findById(assetId);
     if (asset && asset.imgSrc) {
-        // Trích xuất file key từ URL và xóa file trên R2
-        const fileKey = asset.imgSrc.split('/').pop();
-        if (fileKey) {
-            await deleteFileFromR2(fileKey);
+        // THAY ĐỔI: Trích xuất ID từ URL và xóa file trên Cloudflare
+        const imageId = getImageIdFromUrl(asset.imgSrc);
+        if (imageId) {
+            await deleteFileFromCloudflare(imageId);
         }
     }
-    // Xóa tài sản khỏi cơ sở dữ liệu
     await DesignAsset.findByIdAndDelete(assetId);
 };
+
 
 // ++ BẮT ĐẦU THÊM MỚI ++
 /**
@@ -90,14 +90,14 @@ const bulkDeleteAssetsByIds = async (assetIds) => {
         return { deletedCount: 0 };
     }
 
-    // 1. Tìm tất cả các tài sản để lấy URL ảnh và xóa chúng trên R2
     const assetsToDelete = await DesignAsset.find({ _id: { $in: assetIds } });
     
+    // THAY ĐỔI: Xóa file trên Cloudflare
     const deletePromises = assetsToDelete.map(asset => {
         if (asset.imgSrc) {
-            const fileKey = asset.imgSrc.split('/').pop();
-            if (fileKey) {
-                return deleteFileFromR2(fileKey);
+            const imageId = getImageIdFromUrl(asset.imgSrc);
+            if (imageId) {
+                return deleteFileFromCloudflare(imageId);
             }
         }
         return Promise.resolve();
@@ -105,10 +105,10 @@ const bulkDeleteAssetsByIds = async (assetIds) => {
 
     await Promise.all(deletePromises);
 
-    // 2. Xóa tất cả các document trong DB bằng một câu lệnh
     const result = await DesignAsset.deleteMany({ _id: { $in: assetIds } });
     return result;
 };
+
 module.exports = {
     getAssetsByType,
     createAsset, 

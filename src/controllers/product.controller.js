@@ -1,7 +1,7 @@
 const productService = require('../services/product.service');
 const APIFeatures = require('../utils/apiFeature');
 const sharp = require('sharp');
-const { uploadFileToR2 } = require('../services/r2.service');
+const { uploadFileToCloudflare } = require('../services/cloudflare.service.js');
 const AppError = require('../utils/AppError');
 
 const processContentImages = async (htmlContent) => {
@@ -30,7 +30,7 @@ const processAndUploadFile = async (file) => {
         .resize({ width: 800, fit: 'inside', withoutEnlargement: true })
         .webp({ quality: 90 })
         .toBuffer();
-    const { url } = await uploadFileToR2(buffer, 'image/webp');
+    const { url } = await uploadFileToCloudflare(buffer);
     return url;
 };
 

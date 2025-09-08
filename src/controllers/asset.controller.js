@@ -1,5 +1,5 @@
 const sharp = require('sharp');
-const { uploadFileToR2 } = require('../services/r2.service');
+const { uploadFileToCloudflare } = require('../services/cloudflare.service');
 
 /**
  * [CONTROLLER MỚI]
@@ -17,7 +17,7 @@ exports.handleBatchUpload = async (req, res, next) => {
                 .webp({ quality: 85 })
                 .toBuffer();
             
-            const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
+            const { url } = await uploadFileToCloudflare(processedBuffer);
             
             // Trả về một object với key là fieldname (placeholder) và value là URL thật
             return { placeholder: file.fieldname, url };

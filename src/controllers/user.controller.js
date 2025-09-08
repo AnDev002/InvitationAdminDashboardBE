@@ -1,5 +1,5 @@
 const userService = require('../services/user.service');
-const { deleteFileFromR2 } = require('../services/r2.service.js');
+const { deleteFileFromCloudflare, getImageIdFromUrl } = require('../services/cloudflare.service.js');
 const AppError = require('../utils/AppError');
 
 const getUsers = async (req, res, next) => {
@@ -46,15 +46,11 @@ const getMe = async (req, res, next) => {
 
 const updateMe = async (req, res, next) => {
     try {
-    // Middleware 'protect' đã gắn user vào req.user
     const userId = req.user.id;
 
-    // Lấy các trường có thể cập nhật từ body
     const { firstName, lastName, phone, address, bio, dob } = req.body;
     const updateData = { firstName, lastName, phone, address, bio, dob };
     
-    // --- THAY ĐỔI Ở ĐÂY ---
-    // Gọi đến service để cập nhật, thay vì tự thao tác với DB
     const updatedUser = await userService.updateUser(userId, updateData);
 
     res.status(200).json({
@@ -62,7 +58,6 @@ const updateMe = async (req, res, next) => {
       data: updatedUser,
     });
   } catch (error) {
-    // Truyền lỗi cho errorHandler xử lý
     next(error);
   }
 };
@@ -70,26 +65,20 @@ const updateAvatar = async (req, res, next) => {
   try {
     const userId = req.user.id;
     
-    if (!req.file || !req.file.r2Url) {
-      return next(new AppError('Làm ơn hãy đăng lên một bức ảnh.', 404));
+    if (!req.file || !req.file.cfUrl) {
+      return next(new AppError('Làm ơn hãy đăng lên một bức ảnh.', 400));
     }
 
-    // --- TỰ ĐỘNG XÓA AVATAR CŨ TRÊN R2 ---
     const oldAvatarUrl = req.user.avatar; 
-    // Kiểm tra xem có avatar cũ không và đó có phải là link từ R2 không
-    if (oldAvatarUrl && oldAvatarUrl.includes(process.env.R2_PUBLIC_URL)) {
-        // Trích xuất 'key' của file từ URL
-        const oldFileKey = oldAvatarUrl.split('/').pop();
-        if(oldFileKey) {
-          await deleteFileFromR2(oldFileKey);
+    if (oldAvatarUrl) {
+        const oldImageId = getImageIdFromUrl(oldAvatarUrl);
+        if(oldImageId) {
+          await deleteFileFromCloudflare(oldImageId);
         }
     }
-    // --- KẾT THÚC ---
 
-    // Lấy URL của avatar mới từ middleware
-    const newAvatarUrl = req.file.r2Url;
+    const newAvatarUrl = req.file.cfUrl;
 
-    // Cập nhật CSDL với URL mới
     const updatedUser = await userService.updateUser(userId, { avatar: newAvatarUrl });
 
     res.status(200).json({
@@ -115,7 +104,6 @@ const changePassword = async (req, res, next) => {
             message: 'Đổi mật khẩu thành công.',
         });
     } catch (error) {
-        // Tạo lỗi tùy chỉnh để frontend dễ bắt
         if (error.message.includes('không chính xác')) {
             return res.status(401).json({ message: error.message });
         }
@@ -123,16 +111,14 @@ const changePassword = async (req, res, next) => {
     }
 };
 
-// ++ SỬA LỖI: Cập nhật người dùng (cho Admin) ++
 const updateUser = async (req, res, next) => {
     try {
-        // Không cho phép admin thay đổi mật khẩu trực tiếp từ form này
         const { password, ...updateData } = req.body;
         const user = await userService.updateUser(req.params.id, updateData);
         if (!user) {
             return next(new AppError('Không tìm thấy người dùng để cập nhật.', 404));
         }
-        res.status(200).send({ // Sử dụng mã 200
+        res.status(200).send({
             status: 'success',
             message: 'Cập nhật người dùng thành công',
             data: user,
@@ -142,11 +128,10 @@ const updateUser = async (req, res, next) => {
     }
 };
 
-// ++ SỬA LỖI: Xóa người dùng (cho Admin) ++
 const deleteUser = async (req, res, next) => {
     try {
         await userService.deleteUser(req.params.id);
-        res.status(200).send({ // Sử dụng mã 200
+        res.status(200).send({
             status: 'success',
             message: 'Xóa người dùng thành công',
         });

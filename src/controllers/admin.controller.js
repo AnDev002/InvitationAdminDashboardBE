@@ -3,7 +3,7 @@
 const adminService = require('../services/admin.service');
 const _ = require('lodash');
 const sharp = require('sharp');
-const { uploadFileToR2 } = require('../services/r2.service');
+const { uploadFileToCloudflare } = require('../services/cloudflare.service.js');
 
 // Dashboard
 exports.getDashboardData = async (req, res, next) => {
@@ -28,7 +28,6 @@ exports.getSettings = async (req, res, next) => {
 
 exports.updateSettings = async (req, res, next) => {
     try {
-        // Dữ liệu settings được gửi dưới dạng chuỗi JSON trong field 'settings'
         const settingsData = JSON.parse(req.body.settings || '{}');
 
         if (req.files && req.files.length > 0) {
@@ -37,17 +36,15 @@ exports.updateSettings = async (req, res, next) => {
                 let fileBuffer = file.buffer;
                 let fileMimeType = file.mimetype;
 
-                // Tối ưu hóa ảnh trước khi upload
                 if (file.mimetype.startsWith('image/') && file.mimetype !== 'image/gif') {
                     fileBuffer = await sharp(file.buffer)
                         .resize({ width: 1920, fit: 'inside', withoutEnlargement: true })
                         .webp({ quality: 85 })
                         .toBuffer();
-                    fileMimeType = 'image/webp';
                 }
 
-                const { url } = await uploadFileToR2(fileBuffer, fileMimeType);
-                // `file.fieldname` sẽ có dạng `banners__0__imageUrl` hoặc `theme__logoUrl`
+                // THAY ĐỔI: Upload lên Cloudflare
+                const { url } = await uploadFileToCloudflare(fileBuffer);
                 fileUrlMap.set(file.fieldname, url);
             });
             await Promise.all(uploadPromises);

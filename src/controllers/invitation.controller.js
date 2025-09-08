@@ -1,7 +1,7 @@
 const invitationService = require('../services/invitation.service');
 const mongoose = require('mongoose');
 const sharp = require('sharp');
-const { uploadFileToR2 } = require('../services/r2.service.js');
+const { uploadFileToCloudflare } = require('../services/cloudflare.service.js');
 const _ = require('lodash');
 const AppError = require('../utils/AppError');
 
@@ -15,7 +15,7 @@ const handleUploadedFiles = async (dataObject, files) => {
             .resize({ width: 1920, fit: 'inside', withoutEnlargement: true })
             .webp({ quality: 85 })
             .toBuffer();
-        const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
+        const { url } = await uploadFileToCloudflare(processedBuffer);
         fileMap.set(file.fieldname, url);
     });
     await Promise.all(uploadPromises);
@@ -56,10 +56,8 @@ const createInvitation = async (req, res, next) => {
                     .resize({ width: 1920, fit: 'inside', withoutEnlargement: true })
                     .webp({ quality: 85 })
                     .toBuffer();
-                const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
+                const { url } = await uploadFileToCloudflare(processedBuffer);
                 
-                // --- SỬA LỖI TẠI ĐÂY ---
-                // Sửa lại logic để xử lý đúng fieldname 'background_<page_id>'
                 if (file.fieldname.startsWith('background_')) {
                     const pageId = file.fieldname.split('_')[1];
                     const pageIndex = contentData.findIndex(p => p.id === pageId);
@@ -67,11 +65,9 @@ const createInvitation = async (req, res, next) => {
                         contentData[pageIndex].backgroundImage = url;
                     }
                 } else {
-                    // Giữ nguyên logic xử lý các file khác trong settings
                     const path = file.fieldname.replace(/__/g, '.');
                     _.set(settingsData, path, url);
                 }
-                // --- KẾT THÚC SỬA LỖI ---
             }));
         }
 
@@ -104,26 +100,21 @@ const updateInvitation = async (req, res, next) => {
         const invitationId = req.params.id;
         const updateData = req.body;
 
-        // 1. Parse dữ liệu JSON từ form-data
         const contentData = JSON.parse(updateData.content || '[]');
         let settingsUpdate = JSON.parse(updateData.settings || '{}');
         const designUpdate = JSON.parse(updateData.design || '{}');
 
-        // 2. Xử lý tất cả các file ảnh được tải lên (nếu có)
         if (req.files && req.files.length > 0) {
-            const uploadedImageUrls = {}; // Object để lưu các URL ảnh mới sau khi tải lên
+            const uploadedImageUrls = {};
 
-            // Tải song song tất cả file lên R2 và xử lý ảnh
             const uploadPromises = req.files.map(async (file) => {
-                // Tối ưu hóa ảnh trước khi tải lên
                 const processedBuffer = await sharp(file.buffer)
                     .resize({ width: 1200, fit: 'inside', withoutEnlargement: true })
                     .webp({ quality: 85 })
                     .toBuffer();
                 
-                const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
+                const { url } = await uploadFileToCloudflare(processedBuffer);
 
-                // Xử lý các file ảnh nền của từng trang canvas
                 if (file.fieldname.startsWith('background_')) {
                     const pageId = file.fieldname.split('_')[1];
                     const pageIndex = contentData.findIndex(p => p.id === pageId);
@@ -131,15 +122,12 @@ const updateInvitation = async (req, res, next) => {
                         contentData[pageIndex].backgroundImage = url;
                     }
                 }
-                // Xử lý các file ảnh trong Event Settings
                 else {
-                    // Xử lý các trường ảnh là một mảng (vd: galleryImages, qrCodes)
                     if (file.fieldname.endsWith('[]')) {
                         const key = file.fieldname.slice(0, -2);
                         if (!uploadedImageUrls[key]) uploadedImageUrls[key] = [];
                         uploadedImageUrls[key].push(url);
                     } else {
-                        // Xử lý các trường ảnh đơn lẻ, hỗ trợ cả cấu trúc lồng nhau (vd: heroImages.main)
                         const path = file.fieldname.replace(/_/g, '.');
                         _.set(uploadedImageUrls, path, url);
                     }
@@ -148,22 +136,17 @@ const updateInvitation = async (req, res, next) => {
 
             await Promise.all(uploadPromises);
 
-            // 3. Hợp nhất (merge) dữ liệu ảnh mới vào settings một cách chính xác
-            // _.mergeWith cho phép chúng ta định nghĩa cách hợp nhất cho các mảng
             settingsUpdate = _.mergeWith(settingsUpdate, uploadedImageUrls, (objValue, srcValue) => {
-                // Nếu trường đang xét là một mảng, hãy nối chúng lại thay vì ghi đè
                 if (_.isArray(objValue)) {
                     return objValue.concat(srcValue);
                 }
             });
         }
 
-        // 4. Gán lại dữ liệu đã được xử lý hoàn chỉnh vào đối tượng update
         updateData.content = contentData;
         updateData.settings = settingsUpdate;
         updateData.design = designUpdate;
 
-        // 5. Gọi service để cập nhật vào cơ sở dữ liệu
         const updatedInvitation = await invitationService.updateInvitation(invitationId, userId, updateData);
 
         if (!updatedInvitation) {
@@ -195,14 +178,13 @@ const updateInvitationSettings = async (req, res, next) => {
         }
         let settingsUpdate = JSON.parse(req.body.settingsData);
         
-        // Xử lý file cho settings
         if (req.files && req.files.length > 0) {
              await Promise.all(req.files.map(async (file) => {
                 const processedBuffer = await sharp(file.buffer)
                     .resize({ width: 1920, fit: 'inside', withoutEnlargement: true })
                     .webp({ quality: 85 })
                     .toBuffer();
-                const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
+                const { url } = await uploadFileToCloudflare(processedBuffer);
                 const path = file.fieldname.replace(/__/g, '.');
                  if (file.fieldname.endsWith('[]')) {
                     const arrayPath = path.slice(0, -2);
@@ -516,12 +498,16 @@ const updateInvitationBackground = async (req, res, next) => {
         }
         const { id } = req.params;
         const file = req.file;
-        const imageUrl = await r2Service.uploadFile({
-            file,
-            path: `invitations/${id}/backgrounds`,
-        });
+
+        const processedBuffer = await sharp(file.buffer)
+            .resize({ width: 1920, fit: 'inside', withoutEnlargement: true })
+            .webp({ quality: 85 })
+            .toBuffer();
+        
+        const { url } = await uploadFileToCloudflare(processedBuffer);
+
         const updatedInvitation = await invitationService.updateInvitationById(id, {
-            background: imageUrl,
+            background: url,
         });
         if (!updatedInvitation) {
             return next(new AppError('Không tìm thấy thiệp mời.', 404));

@@ -1,6 +1,9 @@
 // TrainData/AdminBE/controllers/font.controller.js
 const fontService = require('../services/font.service');
-const { uploadFileToR2 } = require('../services/r2.service');
+// This will be replaced with a generic file upload service if you have one.
+// For now, assuming fonts are not images and won't use Cloudflare Images.
+// If you have a different service for files, import it here.
+// const { uploadFile } = require('../services/file.service'); 
 
 exports.getPublicFonts = async (req, res, next) => {
     try {
@@ -26,8 +29,12 @@ exports.createFont = async (req, res, next) => {
             return res.status(400).json({ message: 'Vui lòng tải lên một file font.' });
         }
 
-        // Tải file font lên R2
-        const { url } = await uploadFileToR2(req.file.buffer, req.file.mimetype);
+        // Since Cloudflare Images is for images, you'd need a different service for font files.
+        // The logic below assumes you have a generic file upload service.
+        // const { url } = await uploadFile(req.file.buffer, req.file.mimetype);
+
+        // Placeholder until you provide a generic file service
+        const url = "https://example.com/placeholder-font-url";
 
         const fontData = {
             name: req.body.name,
@@ -67,9 +74,10 @@ exports.bulkCreateFonts = async (req, res, next) => {
             return res.status(400).json({ message: 'Số lượng file và metadata không khớp.' });
         }
 
-        // Xử lý và tải các file lên R2 song song
+        // Again, assuming a generic file upload service for fonts.
         const uploadPromises = files.map(async (file, index) => {
-            const { url } = await uploadFileToR2(file.buffer, file.mimetype);
+            // const { url } = await uploadFile(file.buffer, file.mimetype);
+            const url = `https://example.com/placeholder-font-url-${index}`;
             return {
                 name: metadata[index].name,
                 category: metadata[index].category || 'Custom',

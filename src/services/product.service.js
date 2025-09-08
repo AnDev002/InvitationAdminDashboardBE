@@ -1,5 +1,5 @@
 const Product = require('../models/product.model');
-const { deleteFileFromR2 } = require('./r2.service'); 
+const { deleteFileFromCloudflare, getImageIdFromUrl } = require('./cloudflare.service.js');
 
 /**
  * Tạo sản phẩm mới
@@ -46,19 +46,17 @@ const updateProductById = async (id, updateData) => {
  * @param {string} id - ID của sản phẩm
  */
 const deleteProductById = async (id) => {
-  // Tìm sản phẩm trước khi xóa để lấy thông tin ảnh
   const product = await Product.findById(id);
-  if (product) {
-    // URL có dạng: R2_PUBLIC_URL/fileKey
-    // Chúng ta cần trích xuất fileKey
-    if (product.imgSrc) {
-        const fileKey = product.imgSrc.split('/').pop();
-        await deleteFileFromR2(fileKey);
-    }
+  if (product && product.imgSrc) {
+      // THAY ĐỔI: Trích xuất ID và xóa file trên Cloudflare
+      const imageId = getImageIdFromUrl(product.imgSrc);
+      if (imageId) {
+        await deleteFileFromCloudflare(imageId);
+      }
   }
-  // Xóa sản phẩm khỏi DB
   await Product.findByIdAndDelete(id);
 };
+
 
 module.exports = {
   createProduct,
