@@ -1,4 +1,5 @@
-// src/services/cloudflare.service.js
+// AdminBE/services/cloudflare.service.js
+
 import axios from 'axios';
 import FormData from 'form-data';
 
@@ -7,12 +8,17 @@ const CLOUDFLARE_ACCOUNT_ID = "e7c5347541597ef74ad3c97cad071393";
 const CLOUDFLARE_API_TOKEN = "0PYlIHJ22loaR9LRsJQHII8FOs_d6VojDnuEBDIK";
 const CLOUDFLARE_ACCOUNT_HASH = "mYCNH6-2h27PJijuhYd-fw";
 
-// Hàm getUploadUrl không thay đổi
+/**
+ * === HÀM ĐÃ SỬA LỖI ===
+ * Lấy URL upload một lần từ Cloudflare.
+ * Thay đổi quan trọng: truyền `null` thay vì `{}` để axios không tự động
+ * thêm header 'Content-Type: application/json'.
+ */
 const getUploadUrl = async () => {
     try {
         const response = await axios.post(
             `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/images/v2/direct_upload`,
-            {},
+            null, // <-- THAY ĐỔI QUAN TRỌNG NHẤT NẰM Ở ĐÂY
             {
                 headers: {
                     'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
@@ -26,6 +32,10 @@ const getUploadUrl = async () => {
     }
 };
 
+/**
+ * Upload file lên Cloudflare. Hàm này đã đúng từ trước
+ * và không cần thay đổi.
+ */
 export const uploadFileToCloudflare = async (fileBuffer) => {
     try {
         const uploadURL = await getUploadUrl();
@@ -33,11 +43,7 @@ export const uploadFileToCloudflare = async (fileBuffer) => {
         const form = new FormData();
         form.append('file', fileBuffer, 'image.webp');
 
-        // === THAY ĐỔI QUAN TRỌNG NHẤT ===
-        // Xóa hoàn toàn phần config headers.
-        // Chỉ cần truyền 'form' vào, axios sẽ tự động làm phần còn lại.
         const response = await axios.post(uploadURL, form);
-        // ===================================
 
         const result = response.data.result;
         return {
