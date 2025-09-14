@@ -266,6 +266,7 @@ const createTemplate = async (req, res, next) => {
     try {
         const parsedTemplateData = JSON.parse(req.body.templateData || '{}');
         const parsedLoveGiftsButton = req.body.loveGiftsButton ? JSON.parse(req.body.loveGiftsButton) : null;
+        
         const newTemplatePayload = {
             ...req.body,
             templateData: parsedTemplateData,
@@ -299,7 +300,7 @@ const createTemplate = async (req, res, next) => {
         }
 
         if (!newTemplatePayload.imgSrc) {
-            newTemplatePayload.imgSrc = 'https://placehold.co/400x300/e0e0e0/777?text=Chua+thiet+ke';
+            return res.status(400).json({ message: 'Ảnh đại diện là bắt buộc khi tạo mẫu mới.' });
         }
 
         newTemplatePayload.description = await processContentImages(req.body.description || '');
