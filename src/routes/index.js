@@ -36,6 +36,7 @@ router.route('/templates/:id')
     .delete(templateController.deleteTemplate); // Bổ sung route DELETE
 
 // === User Management ===
+router.get('/users/me', userController.getMe); 
 router.get('/users', userController.getUsers);
 router.get('/users/:id', userController.getUser);
 
