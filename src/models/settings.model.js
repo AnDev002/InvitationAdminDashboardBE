@@ -40,18 +40,18 @@ const footerSchema = new mongoose.Schema({
 }, { _id: false });
 
 const bannerSchema = new mongoose.Schema({
-    id: { type: String, required: true }, // Dùng UUID ở frontend để định danh
-    name: { type: String, required: true }, // Tên để quản lý trong admin (vd: "Banner chính trang chủ")
-    displayPage: { type: String, required: true, enum: ['all', 'home', 'shop', 'professional', 'invitations'], default: 'all' }, // Trang sẽ hiển thị banner này
+    id: { type: String, required: true },
+    name: { type: String, default: '' }, 
     isEnabled: { type: Boolean, default: true },
+    displayPage: { type: String, default: 'all' },
     mediaType: { type: String, enum: ['image', 'video'], default: 'image' },
     imageUrl: { type: String, default: '' },
     videoUrl: { type: String, default: '' },
-    imageUrl: { type: String, default: '' },
     title: { type: String, default: '' },
     subtitle: { type: String, default: '' },
-    htmlContent: { type: String, default: '' } // Thêm trường HTML content
+    htmlContent: { type: String, default: '' }
 }, { _id: false });
+
 
 const settingsSchema = new mongoose.Schema({
     singletonKey: { type: String, default: "main_settings", unique: true },

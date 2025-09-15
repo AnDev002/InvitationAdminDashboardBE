@@ -73,50 +73,66 @@ const getSettings = async () => {
 
 
 const updateSettings = async (settingsData) => {
-    // Tìm một document settings duy nhất. Thường chỉ có một.
     let settings = await Setting.findOne({ singletonKey: "main_settings" });
 
     if (!settings) {
-        // Nếu không có, tạo mới.
         console.log("Creating new settings document during update...");
         return await Setting.create({ singletonKey: "main_settings", ...settingsData });
     }
 
-    // --- LOGIC SỬA LỖI & NÂNG CẤP ---
-    // Thay vì dùng _.merge, chúng ta sẽ gán trực tiếp và để Mongoose xử lý.
-    // Điều này đảm bảo các mảng (như banners, socialLinks) được thay thế hoàn toàn
-    // thay vì bị "trộn" lại, giải quyết được vấn đề upload/xóa file.
+    // =======================================================================
+    // === BẮT ĐẦU SỬA LỖI: LOGIC PHÒNG VỆ VÀ SỬA DỮ LIỆU TỰ ĐỘNG ===
+    // =======================================================================
+    // Hàm này sẽ đệ quy qua các mục nav và thêm trường 'type' nếu nó bị thiếu.
+    // Điều này giúp dữ liệu luôn hợp lệ với schema mới nhất.
+    const ensureNavItemsHaveType = (items, level = 0) => {
+        if (!items || !Array.isArray(items)) {
+            return [];
+        }
+        return items.map(item => {
+            const newItem = { ...item };
+            if (!newItem.type) {
+                if (level === 0) newItem.type = 'category';
+                else if (level === 1) newItem.type = 'group';
+                else newItem.type = 'type';
+            }
+            if (newItem.children) {
+                newItem.children = ensureNavItemsHaveType(newItem.children, level + 1);
+            }
+            return newItem;
+        });
+    };
 
-    // 1. Gán lại toàn bộ các mảng
-    if (settingsData.banners) {
-        settings.banners = settingsData.banners;
-    }
-    if (settingsData.footer) {
-        settings.footer = settingsData.footer;
-    }
+    // Trước khi cập nhật, kiểm tra và sửa lại `headerNav` nếu cần thiết.
     if (settingsData.headerNav) {
-        settings.headerNav = settingsData.headerNav;
+        settingsData.headerNav = ensureNavItemsHaveType(settingsData.headerNav);
     }
-    if (settingsData.seo) {
-        // Dùng merge cho SEO vì cấu trúc lồng nhau phức tạp và không chứa mảng file
-        settings.seo = _.merge(settings.seo || {}, settingsData.seo);
-    }
-    
-    // 2. Gán lại các trường theme
-    if (settingsData.theme) {
-        // Dùng merge cho theme vì nó là object đơn giản
-        settings.theme = _.merge(settings.theme || {}, settingsData.theme);
-    }
+    // =======================================================================
+    // === KẾT THÚC SỬA LỖI ===
+    // =======================================================================
 
-    // 3. Đánh dấu các đường dẫn phức tạp đã bị thay đổi để Mongoose nhận biết
+    // Sử dụng lodash.mergeWith để hợp nhất dữ liệu, nhưng thay thế hoàn toàn các mảng.
+    // Điều này đảm bảo rằng việc xóa các mục trong mảng (như banner, link) từ frontend
+    // sẽ được phản ánh chính xác trong cơ sở dữ liệu.
+    const customizer = (objValue, srcValue) => {
+        if (_.isArray(srcValue)) {
+            return srcValue;
+        }
+    };
+
+    _.mergeWith(settings, settingsData, customizer);
+
+    // Đánh dấu các đường dẫn có cấu trúc phức tạp là đã bị sửa đổi để Mongoose biết và lưu lại.
+    settings.markModified('theme');
     settings.markModified('banners');
     settings.markModified('footer');
+    settings.markModified('seo');
     settings.markModified('headerNav');
 
-    // 4. Lưu lại document
-    await settings.save();
+    await settings.save(); // Lưu lại các thay đổi vào DB.
     return settings;
 };
+
 
 
 

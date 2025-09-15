@@ -45,6 +45,16 @@ const errorHandler = (err, req, res, next) => {
     if (error.name === 'ValidationError') error = new AppError(Object.values(error.errors).map(el => el.message).join('. '), 400);
     if (error.name === 'JsonWebTokenError') error = new AppError('Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.', 401);
     if (error.name === 'TokenExpiredError') error = new AppError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 401);
+    // BẮT ĐẦU THAY ĐỔI: Xử lý MulterError
+    if (error.name === 'MulterError') {
+        if (error.code === 'LIMIT_FILE_SIZE') {
+            error = new AppError('Một trong các tệp có dung lượng quá lớn. Vui lòng kiểm tra lại.', 400);
+        }
+        if (error.code === 'LIMIT_FILE_COUNT') {
+            error = new AppError('Bạn đã tải lên quá nhiều tệp cùng lúc. Vui lòng thử lại với số lượng ít hơn.', 400);
+        }
+    }
+    // KẾT THÚC THAY ĐỔI
 
     sendErrorProd(error, res);
   }
