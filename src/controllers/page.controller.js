@@ -134,10 +134,23 @@ exports.createPage = async (req, res, next) => {
     }
 };
 
-
 exports.updatePage = async (req, res, next) => {
     try {
         const pageData = { ...req.body };
+
+        // --- BẮT ĐẦU THÊM LOGIC DỌN DẸP ---
+        pageData.isBlog = pageData.isBlog === 'true';
+
+        // 1. Nếu không phải là blog, luôn xóa category
+        if (!pageData.isBlog) {
+            pageData.category = null;
+        } 
+        // 2. Nếu là blog nhưng category rỗng, cũng đặt là null
+        else if (pageData.category === '') {
+            pageData.category = null;
+        }
+        // --- KẾT THÚC LOGIC DỌN DẸP ---
+
         const contentBlocks = JSON.parse(pageData.content || '[]');
         
         const processedContent = await processContentFiles(contentBlocks, req.files);
@@ -147,10 +160,7 @@ exports.updatePage = async (req, res, next) => {
             pageData.seo = JSON.parse(pageData.seo);
         }
 
-        if (pageData.isBlog) {
-            pageData.isBlog = pageData.isBlog === 'true';
-        }
-
+        // Dùng pageData đã được làm sạch để cập nhật
         const updatedPage = await pageService.updatePage(req.params.id, pageData);
         if (!updatedPage) return res.status(404).json({ message: 'Không tìm thấy trang' });
         res.status(200).json({ status: 'success', data: updatedPage });
@@ -161,6 +171,7 @@ exports.updatePage = async (req, res, next) => {
         next(error); 
     }
 };
+
 
 
 exports.deletePage = async (req, res, next) => {
