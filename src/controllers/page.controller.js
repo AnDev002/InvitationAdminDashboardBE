@@ -69,12 +69,10 @@ const processContentImages = async (contentBlocks) => {
 exports.getPages = async (req, res, next) => {
     try {
         const query = {};
-        if (req.query.isBlog) {
-            query.isBlog = req.query.isBlog === 'true';
-        }
-        if (req.query.isPublished) {
-            query.isPublished = req.query.isPublished === 'true';
-        }
+        if (req.query.isBlog) query.isBlog = req.query.isBlog === 'true';
+        if (req.query.isPublished) query.isPublished = req.query.isPublished === 'true';
+        // Thêm query cho category
+        if (req.query.category) query.category = req.query.category;
         
         const pages = await pageService.getAllPages(query); 
         
@@ -83,7 +81,6 @@ exports.getPages = async (req, res, next) => {
         next(error); 
     }
 };
-
 
 exports.getPage = async (req, res, next) => {
     try {
@@ -165,4 +162,48 @@ exports.getPublicPageBySlug = async (req, res, next) => {
         if (!page) return res.status(404).json({ message: 'Trang không tồn tại hoặc chưa được xuất bản.' });
         res.status(200).json({ status: 'success', data: page });
     } catch (error) { next(error); }
+};
+
+exports.getAllPageCategories = async (req, res, next) => {
+    try {
+        const categories = await pageService.getAllPageCategories();
+        res.status(200).json({ status: 'success', data: categories });
+    } catch (error) {
+        next(error);
+    }
+};
+
+exports.createPageCategory = async (req, res, next) => {
+    try {
+        const newCategory = await pageService.createPageCategory(req.body);
+        res.status(201).json({ status: 'success', data: newCategory });
+    } catch (error) {
+        if (error.code === 11000) {
+            return res.status(409).json({ message: 'Lỗi: Tên hoặc đường dẫn (slug) của danh mục đã tồn tại.' });
+        }
+        next(error);
+    }
+};
+
+exports.updatePageCategory = async (req, res, next) => {
+    try {
+        const updatedCategory = await pageService.updatePageCategory(req.params.id, req.body);
+        if (!updatedCategory) return res.status(404).json({ message: 'Không tìm thấy danh mục' });
+        res.status(200).json({ status: 'success', data: updatedCategory });
+    } catch (error) {
+        if (error.code === 11000) {
+            return res.status(409).json({ message: 'Lỗi: Tên hoặc đường dẫn (slug) của danh mục đã tồn tại.' });
+        }
+        next(error);
+    }
+};
+
+exports.deletePageCategory = async (req, res, next) => {
+    try {
+        const category = await pageService.deletePageCategory(req.params.id);
+        if (!category) return res.status(404).json({ message: 'Không tìm thấy danh mục' });
+        res.status(204).send();
+    } catch (error) {
+        next(error);
+    }
 };

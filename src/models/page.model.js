@@ -1,7 +1,36 @@
 // TrainData/AdminBE/models/page.model.js
 const mongoose = require('mongoose');
 
-// ++ MỚI: Schema cho các khối nội dung
+// --- BẮT ĐẦU: Thêm schema và model cho PageCategory ---
+const pageCategorySchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: [true, 'Tên danh mục là bắt buộc.'],
+        unique: true,
+        trim: true,
+    },
+    slug: {
+        type: String,
+        required: [true, 'Đường dẫn (slug) danh mục là bắt buộc.'],
+        unique: true,
+        trim: true,
+        lowercase: true,
+    },
+}, { timestamps: true });
+
+// Tự động tạo slug từ name nếu slug rỗng
+pageCategorySchema.pre('save', function(next) {
+    if (!this.slug) {
+        this.slug = this.name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+    }
+    next();
+});
+
+const PageCategory = mongoose.model('PageCategory', pageCategorySchema);
+// --- KẾT THÚC ---
+
+
+// Schema cho các khối nội dung
 const contentBlockSchema = new mongoose.Schema({
     type: {
         type: String,
@@ -15,7 +44,6 @@ const contentBlockSchema = new mongoose.Schema({
     alt: { 
         type: String 
     },
-    // Bạn có thể thêm các thuộc tính khác sau này, vd: caption cho ảnh
 }, { _id: true });
 
 
@@ -41,6 +69,12 @@ const pageSchema = new mongoose.Schema({
         default: false,
         index: true,
     },
+    // --- BẮT ĐẦU: Thêm trường category ---
+    category: {
+        type: mongoose.Schema.ObjectId,
+        ref: 'PageCategory'
+    },
+    // --- KẾT THÚC ---
     seo: {
         metaTitle: { type: String, trim: true },
         metaDescription: { type: String, trim: true },
@@ -64,6 +98,13 @@ pageSchema.pre('save', function(next) {
     next();
 });
 
+// Middleware để tự động populate author và category khi query
+pageSchema.pre(/^find/, function(next) {
+    this.populate('author', 'name').populate('category', 'name slug');
+    next();
+});
+
 const Page = mongoose.model('Page', pageSchema);
 
-module.exports = Page;
+// Xuất cả hai model
+module.exports = { Page, PageCategory };

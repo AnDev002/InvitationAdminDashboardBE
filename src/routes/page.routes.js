@@ -6,6 +6,13 @@ const { upload } = require('../middleware/upload.middleware');
 const { uploadFileToCloudflare } = require('../services/cloudflare.service');
 const sharp = require('sharp');
 
+router.route('/categories')
+    .get(pageController.getAllPageCategories)
+    .post(pageController.createPageCategory);
+
+router.route('/categories/:id')
+    .put(pageController.updatePageCategory)
+    .delete(pageController.deletePageCategory);
 // Các route này đã được bảo vệ bởi admin middleware ở file index
 router.route('/')
     .get(pageController.getPages)

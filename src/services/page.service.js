@@ -1,17 +1,46 @@
-// TrainData/AdminBE/services/page.service.js
-const Page = require('../models/page.model');
+// AdminBE/services/page.service.js
 
-// Các hàm này giờ đây sẽ nhận và lưu trữ 'pageData' với trường 'content' là một mảng.
-// Mongoose sẽ tự động xử lý việc lưu trữ cấu trúc mảng này.
-// Không cần thay đổi gì ở đây.
+// SỬA Ở ĐÂY: Dùng { Page, PageCategory } để lấy đúng model
+const { Page, PageCategory } = require('../models/page.model');
 
-const getAllPages = (query = {}) => Page.find(query).sort({ createdAt: -1 });
+// --- Dịch vụ cho Page ---
+const getAllPages = async (query = {}) => {
+    const filter = { ...query };
+    
+    // Xóa key 'category' khỏi filter ban đầu để xử lý riêng
+    if (filter.category) {
+        delete filter.category;
+    }
+
+    if (query.category) {
+        const category = await PageCategory.findOne({ slug: query.category });
+        if (category) {
+            filter.category = category._id;
+        } else {
+            return []; // Không tìm thấy category, trả về mảng rỗng
+        }
+    }
+    // Giờ Page.find sẽ hoạt động
+    return Page.find(filter).sort({ createdAt: -1 });
+};
+
 const getPageById = (id) => Page.findById(id);
 const getPageBySlug = (slug) => Page.findOne({ slug, isPublished: true });
 const createPage = (pageData) => Page.create(pageData);
 const updatePage = (id, pageData) => Page.findByIdAndUpdate(id, pageData, { new: true, runValidators: true });
 const deletePage = (id) => Page.findByIdAndDelete(id);
 
+// --- Dịch vụ cho PageCategory ---
+const getAllPageCategories = () => PageCategory.find().sort({ name: 1 });
+const getPageCategoryById = (id) => PageCategory.findById(id);
+const createPageCategory = (categoryData) => PageCategory.create(categoryData);
+const updatePageCategory = (id, categoryData) => PageCategory.findByIdAndUpdate(id, categoryData, { new: true, runValidators: true });
+const deletePageCategory = async (id) => {
+    await Page.updateMany({ category: id }, { category: null });
+    return PageCategory.findByIdAndDelete(id);
+};
+
+// SỬA Ở ĐÂY: Đảm bảo export tất cả các hàm
 module.exports = {
     getAllPages,
     getPageById,
@@ -19,4 +48,10 @@ module.exports = {
     createPage,
     updatePage,
     deletePage,
+    // Thêm các hàm của category vào đây
+    getAllPageCategories,
+    getPageCategoryById,
+    createPageCategory,
+    updatePageCategory,
+    deletePageCategory
 };
