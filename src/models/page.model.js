@@ -1,35 +1,6 @@
 // TrainData/AdminBE/models/page.model.js
 const mongoose = require('mongoose');
 
-// --- BẮT ĐẦU: Thêm schema và model cho PageCategory ---
-const pageCategorySchema = new mongoose.Schema({
-    name: {
-        type: String,
-        required: [true, 'Tên danh mục là bắt buộc.'],
-        unique: true,
-        trim: true,
-    },
-    slug: {
-        type: String,
-        required: [true, 'Đường dẫn (slug) danh mục là bắt buộc.'],
-        unique: true,
-        trim: true,
-        lowercase: true,
-    },
-}, { timestamps: true });
-
-// Tự động tạo slug từ name nếu slug rỗng
-pageCategorySchema.pre('save', function(next) {
-    if (!this.slug) {
-        this.slug = this.name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
-    }
-    next();
-});
-
-const PageCategory = mongoose.model('PageCategory', pageCategorySchema);
-// --- KẾT THÚC ---
-
-
 // Schema cho các khối nội dung
 const contentBlockSchema = new mongoose.Schema({
     type: {
@@ -87,6 +58,10 @@ const pageSchema = new mongoose.Schema({
     author: {
         type: mongoose.Schema.ObjectId,
         ref: 'User'
+    },
+    category: {
+        type: mongoose.Schema.ObjectId,
+        ref: 'PageCategory'
     }
 }, { timestamps: true });
 
@@ -107,4 +82,4 @@ pageSchema.pre(/^find/, function(next) {
 const Page = mongoose.model('Page', pageSchema);
 
 // Xuất cả hai model
-module.exports = { Page, PageCategory };
+module.exports = { Page };

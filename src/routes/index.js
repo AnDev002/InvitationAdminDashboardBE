@@ -7,7 +7,10 @@ const adminController = require('../controllers/admin.controller');
 const productController = require('../controllers/product.controller');
 const templateController = require('../controllers/invitationTemplate.controller');
 const userController = require('../controllers/user.controller');
-
+const pageRoutes = require('./page.routes');
+const pageCategoryRoutes = require('./pageCategory.routes');
+router.use('/pages', pageRoutes);
+router.use('/page-categories', pageCategoryRoutes); 
 // Tất cả các route trong file này đều yêu cầu đăng nhập VÀ phải là admin
 // router.use(protect);
 // router.use(authorize('admin'));

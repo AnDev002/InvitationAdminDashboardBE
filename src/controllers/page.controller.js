@@ -65,6 +65,21 @@ const processContentImages = async (contentBlocks) => {
     return processedBlocks;
 };
 
+exports.getPublicPages = async (req, res, next) => {
+    try {
+        const { category } = req.query;
+        let pages;
+        if (category) {
+            pages = await pageService.getBlogsByCategory(category);
+        } else {
+            pages = await pageService.getPublicPages();
+        }
+        res.status(200).json({ status: 'success', data: pages });
+    } catch (error) {
+        next(error);
+    }
+};
+
 
 exports.getPages = async (req, res, next) => {
     try {

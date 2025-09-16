@@ -4,28 +4,12 @@
 const { Page, PageCategory } = require('../models/page.model');
 
 // --- Dịch vụ cho Page ---
-const getAllPages = async (query = {}) => {
-    const filter = { ...query };
-    
-    // Xóa key 'category' khỏi filter ban đầu để xử lý riêng
-    if (filter.category) {
-        delete filter.category;
-    }
+const getAllPages = (query = {}) => Page.find(query).populate('category').sort({ createdAt: -1 });
 
-    if (query.category) {
-        const category = await PageCategory.findOne({ slug: query.category });
-        if (category) {
-            filter.category = category._id;
-        } else {
-            return []; // Không tìm thấy category, trả về mảng rỗng
-        }
-    }
-    // Giờ Page.find sẽ hoạt động
-    return Page.find(filter).sort({ createdAt: -1 });
-};
 
-const getPageById = (id) => Page.findById(id);
-const getPageBySlug = (slug) => Page.findOne({ slug, isPublished: true });
+const getPageById = (id) => Page.findById(id).populate('category');
+const getPageBySlug = (slug) => Page.findOne({ slug, isPublished: true }).populate('category');
+
 const createPage = (pageData) => Page.create(pageData);
 const updatePage = (id, pageData) => Page.findByIdAndUpdate(id, pageData, { new: true, runValidators: true });
 const deletePage = (id) => Page.findByIdAndDelete(id);
