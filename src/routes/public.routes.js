@@ -4,5 +4,10 @@ const publicController = require('../controllers/public.controller');
 
 // Endpoint: GET /api/public/settings
 router.get('/settings', publicController.getPublicSettings);
+router.get('/pre-footer', publicController.getPreFooterForPath);
+
+// THÊM ROUTE MỚI
+router.get('/page-categories', publicController.getPublicPageCategories);
+
 
 module.exports = router;

@@ -47,6 +47,10 @@ exports.deleteCategory = async (req, res, next) => {
 
 exports.updateCategoryOrder = async (req, res, next) => {
     try {
+        // Cập nhật: Đảm bảo req.body.categories là một mảng trước khi sử dụng
+        if (!Array.isArray(req.body.categories)) {
+            return res.status(400).json({ status: 'fail', message: 'Dữ liệu categories phải là một mảng.' });
+        }
         await pageCategoryService.updateCategoryOrder(req.body.categories);
         res.status(200).json({ status: 'success', message: 'Thứ tự danh mục được cập nhật thành công.' });
     } catch (error) {
