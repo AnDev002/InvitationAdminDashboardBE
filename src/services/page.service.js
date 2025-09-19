@@ -1,7 +1,8 @@
 // AdminBE/services/page.service.js
 
 // SỬA Ở ĐÂY: Dùng { Page, PageCategory } để lấy đúng model
-const { Page, PageCategory } = require('../models/page.model');
+const { Page } = require('../models/page.model'); // Chỉ import Page từ file page.model
+const PageCategory = require('../models/pageCategory.model');
 
 // --- Dịch vụ cho Page ---
 const getAllPages = (query = {}) => Page.find(query).populate('category').sort({ createdAt: -1 });

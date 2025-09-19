@@ -1,3 +1,4 @@
+// AdminBE/models/pageCategory.model.js
 const mongoose = require('mongoose');
 
 const pageCategorySchema = new mongoose.Schema({
@@ -14,11 +15,20 @@ const pageCategorySchema = new mongoose.Schema({
         trim: true,
         lowercase: true,
     },
+    order: { // Thêm trường mới để sắp xếp
+        type: Number,
+        default: 0
+    }
 }, { timestamps: true });
 
-pageCategorySchema.pre('save', function(next) {
+pageCategorySchema.pre('save', async function(next) {
     if (!this.slug) {
         this.slug = this.name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+    }
+    // Tự động gán thứ tự cho danh mục mới tạo
+    if (this.isNew) {
+        const highestOrderCategory = await this.constructor.findOne().sort('-order');
+        this.order = (highestOrderCategory && typeof highestOrderCategory.order === 'number') ? highestOrderCategory.order + 1 : 1;
     }
     next();
 });

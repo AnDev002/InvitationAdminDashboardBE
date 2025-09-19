@@ -6,6 +6,9 @@ router.route('/')
     .get(pageCategoryController.getAllCategories)
     .post(pageCategoryController.createCategory);
 
+router.route('/update-order')
+    .put(pageCategoryController.updateCategoryOrder);
+
 router.route('/:id')
     .put(pageCategoryController.updateCategory)
     .delete(pageCategoryController.deleteCategory);

@@ -59,10 +59,6 @@ const pageSchema = new mongoose.Schema({
         type: mongoose.Schema.ObjectId,
         ref: 'User'
     },
-    category: {
-        type: mongoose.Schema.ObjectId,
-        ref: 'PageCategory'
-    }
 }, { timestamps: true });
 
 // Tự động tạo slug từ title nếu slug không được cung cấp

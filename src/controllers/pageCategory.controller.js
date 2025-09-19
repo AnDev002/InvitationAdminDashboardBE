@@ -43,3 +43,13 @@ exports.deleteCategory = async (req, res, next) => {
         next(error);
     }
 };
+
+
+exports.updateCategoryOrder = async (req, res, next) => {
+    try {
+        await pageCategoryService.updateCategoryOrder(req.body.categories);
+        res.status(200).json({ status: 'success', message: 'Thứ tự danh mục được cập nhật thành công.' });
+    } catch (error) {
+        next(error);
+    }
+};
