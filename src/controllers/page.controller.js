@@ -112,6 +112,9 @@ exports.createPage = async (req, res, next) => {
         }
         
         const pageData = { ...req.body };
+        if (pageData.topics && typeof pageData.topics === 'string') {
+            pageData.topics = JSON.parse(pageData.topics);
+        }
         const contentBlocks = JSON.parse(pageData.content || '[]');
 
         const processedContent = await processContentFiles(contentBlocks, req.files);
@@ -151,6 +154,9 @@ exports.updatePage = async (req, res, next) => {
         }
         // --- KẾT THÚC LOGIC DỌN DẸP ---
 
+        if (pageData.topics && typeof pageData.topics === 'string') {
+            pageData.topics = JSON.parse(pageData.topics);
+        }
         const contentBlocks = JSON.parse(pageData.content || '[]');
         
         const processedContent = await processContentFiles(contentBlocks, req.files);

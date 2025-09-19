@@ -45,6 +45,10 @@ const pageSchema = new mongoose.Schema({
         type: mongoose.Schema.ObjectId,
         ref: 'PageCategory'
     },
+    topics: [{
+        type: mongoose.Schema.ObjectId,
+        ref: 'Topic'
+    }],
     // --- KẾT THÚC ---
     seo: {
         metaTitle: { type: String, trim: true },
@@ -71,9 +75,12 @@ pageSchema.pre('save', function(next) {
 
 // Middleware để tự động populate author và category khi query
 pageSchema.pre(/^find/, function(next) {
-    this.populate('author', 'name').populate('category', 'name slug');
+    this.populate('author', 'name')
+        .populate('category', 'name slug')
+        .populate('topics', 'name slug');
     next();
 });
+
 
 const Page = mongoose.model('Page', pageSchema);
 

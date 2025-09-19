@@ -1,5 +1,6 @@
 const adminService = require('../services/admin.service');
 const pageCategoryService = require('../services/pageCategory.service');
+const topicService = require('../services/topic.service');
 const Setting = require('../models/settings.model');
 
 // Controller để lấy cài đặt công khai
@@ -34,6 +35,14 @@ exports.getPublicPageCategories = async (req, res, next) => {
     }
 };
 
+exports.getPublicTopics = async (req, res, next) => {
+    try {
+        const topics = await topicService.getAllTopics();
+        res.status(200).json({ status: 'success', data: topics });
+    } catch (error) {
+        next(error);
+    }
+};
 exports.getPreFooterForPath = async (req, res) => {
     const { path, type: pageType } = req.query;
 

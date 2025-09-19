@@ -24,9 +24,36 @@ const bulkCreateFonts = async (fontsData) => {
     return await Font.insertMany(fontsData, { ordered: false });
 };
 
+// === BẮT ĐẦU THÊM MỚI ===
+/**
+ * Cập nhật thông tin font (ví dụ: tên).
+ * @param {string} id - ID của font cần cập nhật.
+ * @param {object} updateData - Dữ liệu cần cập nhật.
+ * @returns {Promise<Document>}
+ */
+const updateFontById = (id, updateData) => {
+    return Font.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+};
+
+/**
+ * Xóa nhiều font dựa trên danh sách ID.
+ * @param {Array<string>} ids - Mảng chứa các ID của font cần xóa.
+ * @returns {Promise<object>}
+ */
+const bulkDeleteFontsByIds = async (ids) => {
+    // (Tùy chọn) Nếu bạn muốn xóa file trên R2, bạn cần lặp qua và xóa từng file
+    // const fonts = await Font.find({ _id: { $in: ids } });
+    // await Promise.all(fonts.map(font => deleteFileFromR2(font.url)));
+    return Font.deleteMany({ _id: { $in: ids } });
+};
+// === KẾT THÚC THÊM MỚI ===
+
+
 module.exports = {
     getAllFonts,
     createFont,
     deleteFontById,
-    bulkCreateFonts
+    bulkCreateFonts,
+    updateFontById,       // Export hàm mới
+    bulkDeleteFontsByIds, // Export hàm mới
 };
