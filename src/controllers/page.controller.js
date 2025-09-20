@@ -188,6 +188,18 @@ exports.deletePage = async (req, res, next) => {
     } catch (error) { next(error); }
 };
 
+exports.updatePageOrder = async (req, res, next) => {
+    try {
+        if (!Array.isArray(req.body.pages)) {
+            return res.status(400).json({ status: 'fail', message: 'Dữ liệu pages phải là một mảng.' });
+        }
+        await pageService.updatePageOrder(req.body.pages);
+        res.status(200).json({ status: 'success', message: 'Thứ tự trang được cập nhật thành công.' });
+    } catch (error) {
+        next(error);
+    }
+};
+
 exports.getPublicPageBySlug = async (req, res, next) => {
     try {
         const page = await pageService.getPageBySlug(req.params.slug);
