@@ -24,6 +24,6 @@ export const r2 = new S3Client({
     requestTimeout: 30000,
     connectionTimeout: 30000,
     socketAcquisitionWarningTimeout: 2000, // (Tùy chọn) Tăng thời gian cảnh báo
-    maxSockets: 1000 // **Tăng giới hạn kết nối lên 200 (hoặc cao hơn nếu cần)**
+    maxSockets: 200 // **Tăng giới hạn kết nối lên 200 (hoặc cao hơn nếu cần)**
   }),
 });
