@@ -1,19 +1,29 @@
 // src/services/r2.service.js
-import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { randomBytes } from 'crypto';
-import { r2 } from '../config/r2.config.js';
+const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { randomBytes } = require('crypto');
+
+// Since this is no longer an ES module, we don't need dotenv/config here
+// as it should be loaded once at the start of your application (e.g., in index.js)
 
 const BUCKET_NAME = process.env.BUCKET_NAME;
 const R2_PUBLIC_URL = "https://r2.icards.com.vn";
 
+const r2 = new S3Client({
+  region: 'auto',
+  endpoint: `https://${process.env.ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId: process.env.ACCESS_KEY_ID,
+    secretAccessKey: process.env.SECRET_ACCESS_KEY,
+  },
+});
+
 /**
- * Upload một file lên Cloudflare R2.
- * @param {Buffer} fileBuffer - Buffer của file.
- * @param {string} mimetype - Kiểu MIME của file.
- * @returns {Promise<{key: string, url: string}>} - Key và URL của file đã upload.
+ * Upload a file to Cloudflare R2.
+ * @param {Buffer} fileBuffer - Buffer of the file.
+ * @param {string} mimetype - MIME type of the file.
+ * @returns {Promise<{key: string, url: string}>} - Key and URL of the uploaded file.
  */
-export const uploadFileToR2 = async (fileBuffer, mimetype) => {
-  // Tạo tên file ngẫu nhiên để tránh trùng lặp
+const uploadFileToR2 = async (fileBuffer, mimetype) => {
   const fileKey = randomBytes(16).toString('hex');
 
   const params = {
@@ -27,7 +37,6 @@ export const uploadFileToR2 = async (fileBuffer, mimetype) => {
     const command = new PutObjectCommand(params);
     await r2.send(command);
 
-    // Trả về key và URL công khai của file
     return {
       key: fileKey,
       url: `${R2_PUBLIC_URL}/${fileKey}`,
@@ -39,11 +48,11 @@ export const uploadFileToR2 = async (fileBuffer, mimetype) => {
 };
 
 /**
- * Xóa một file khỏi Cloudflare R2.
- * @param {string} fileKey - Key của file cần xóa.
+ * Delete a file from Cloudflare R2.
+ * @param {string} fileKey - Key of the file to delete.
  * @returns {Promise<void>}
  */
-export const deleteFileFromR2 = async (fileKey) => {
+const deleteFileFromR2 = async (fileKey) => {
   if (!fileKey) return;
 
   const params = {
@@ -56,7 +65,10 @@ export const deleteFileFromR2 = async (fileKey) => {
     await r2.send(command);
   } catch (error) {
     console.error(`Error deleting file ${fileKey} from R2:`, error);
-    // Không throw error ở đây để tránh làm gián đoạn flow xóa chính,
-    // nhưng bạn có thể thay đổi tùy theo yêu cầu của ứng dụng.
   }
+};
+
+module.exports = {
+    uploadFileToR2,
+    deleteFileFromR2,
 };
