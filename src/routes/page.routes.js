@@ -18,8 +18,6 @@ router.route('/')
     .get(pageController.getPages)
     .post(upload.any(), pageController.createPage);
 
-router.put('/update-order', pageController.updatePageOrder);
-
 router.route('/:id')
     .get(pageController.getPage)
     .put(upload.any(), pageController.updatePage) 

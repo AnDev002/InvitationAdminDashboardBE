@@ -1,11 +1,12 @@
 // AdminBE/services/page.service.js
 
-const { Page } = require('../models/page.model');
+// SỬA Ở ĐÂY: Dùng { Page, PageCategory } để lấy đúng model
+const { Page } = require('../models/page.model'); // Chỉ import Page từ file page.model
 const PageCategory = require('../models/pageCategory.model');
 
 // --- Dịch vụ cho Page ---
-// THAY ĐỔI: Sắp xếp theo trường order
-const getAllPages = (query = {}) => Page.find(query).sort({ order: 1 });
+const getAllPages = (query = {}) => Page.find(query).populate('category').sort({ createdAt: -1 });
+
 
 const getPageById = (id) => Page.findById(id).populate('category');
 const getPageBySlug = (slug) => Page.findOne({ slug, isPublished: true }).populate('category');
@@ -13,20 +14,6 @@ const getPageBySlug = (slug) => Page.findOne({ slug, isPublished: true }).popula
 const createPage = (pageData) => Page.create(pageData);
 const updatePage = (id, pageData) => Page.findByIdAndUpdate(id, pageData, { new: true, runValidators: true });
 const deletePage = (id) => Page.findByIdAndDelete(id);
-
-// --- BẮT ĐẦU THÊM MỚI ---
-/**
- * Cập nhật thứ tự của nhiều trang.
- * @param {Array} pages - Mảng chứa các đối tượng { id } theo thứ tự mới.
- * @returns {Promise}
- */
-const updatePageOrder = (pages) => {
-    const promises = pages.map((page, index) => {
-        return Page.findByIdAndUpdate(page.id, { order: index });
-    });
-    return Promise.all(promises);
-};
-// --- KẾT THÚC THÊM MỚI ---
 
 // --- Dịch vụ cho PageCategory ---
 const getAllPageCategories = () => PageCategory.find().sort({ name: 1 });
@@ -38,6 +25,7 @@ const deletePageCategory = async (id) => {
     return PageCategory.findByIdAndDelete(id);
 };
 
+// SỬA Ở ĐÂY: Đảm bảo export tất cả các hàm
 module.exports = {
     getAllPages,
     getPageById,
@@ -45,7 +33,7 @@ module.exports = {
     createPage,
     updatePage,
     deletePage,
-    updatePageOrder, // Export hàm mới
+    // Thêm các hàm của category vào đây
     getAllPageCategories,
     getPageCategoryById,
     createPageCategory,

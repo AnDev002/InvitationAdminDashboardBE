@@ -40,6 +40,7 @@ const pageSchema = new mongoose.Schema({
         default: false,
         index: true,
     },
+    // --- BẮT ĐẦU: Thêm trường category ---
     category: {
         type: mongoose.Schema.ObjectId,
         ref: 'PageCategory'
@@ -48,6 +49,7 @@ const pageSchema = new mongoose.Schema({
         type: mongoose.Schema.ObjectId,
         ref: 'Topic'
     }],
+    // --- KẾT THÚC ---
     seo: {
         metaTitle: { type: String, trim: true },
         metaDescription: { type: String, trim: true },
@@ -61,26 +63,13 @@ const pageSchema = new mongoose.Schema({
         type: mongoose.Schema.ObjectId,
         ref: 'User'
     },
-    // --- BẮT ĐẦU THÊM MỚI ---
-    order: {
-        type: Number,
-        default: 0
-    }
-    // --- KẾT THÚC THÊM MỚI ---
 }, { timestamps: true });
 
-// Tự động tạo slug và order
-pageSchema.pre('save', async function(next) {
+// Tự động tạo slug từ title nếu slug không được cung cấp
+pageSchema.pre('save', function(next) {
     if (!this.slug) {
         this.slug = this.title.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
     }
-    // --- BẮT ĐẦU THÊM MỚI ---
-    // Tự động gán thứ tự cho trang mới tạo
-    if (this.isNew) {
-        const highestOrderPage = await this.constructor.findOne().sort('-order');
-        this.order = (highestOrderPage && typeof highestOrderPage.order === 'number') ? highestOrderPage.order + 1 : 1;
-    }
-    // --- KẾT THÚC THÊM MỚI ---
     next();
 });
 
