@@ -13,14 +13,18 @@ router.route('/categories')
 router.route('/categories/:id')
     .put(pageController.updatePageCategory)
     .delete(pageController.deletePageCategory);
-// Các route này đã được bảo vệ bởi admin middleware ở file index
+
 router.route('/')
     .get(pageController.getPages)
     .post(upload.any(), pageController.createPage);
 
+// === BẮT ĐẦU THÊM MỚI ===
+router.put('/update-order', pageController.updatePageOrder);
+// === KẾT THÚC THÊM MỚI ===
+
 router.route('/:id')
     .get(pageController.getPage)
-    .put(upload.any(), pageController.updatePage) 
+    .put(upload.any(), pageController.updatePage)
     .delete(pageController.deletePage);
 
 router.post(

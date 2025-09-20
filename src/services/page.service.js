@@ -1,12 +1,10 @@
 // AdminBE/services/page.service.js
 
-// SỬA Ở ĐÂY: Dùng { Page, PageCategory } để lấy đúng model
-const { Page } = require('../models/page.model'); // Chỉ import Page từ file page.model
+const { Page } = require('../models/page.model');
 const PageCategory = require('../models/pageCategory.model');
 
 // --- Dịch vụ cho Page ---
-const getAllPages = (query = {}) => Page.find(query).populate('category').sort({ createdAt: -1 });
-
+const getAllPages = (query = {}) => Page.find(query).populate('category').sort({ order: 1 }); // Sắp xếp theo order
 
 const getPageById = (id) => Page.findById(id).populate('category');
 const getPageBySlug = (slug) => Page.findOne({ slug, isPublished: true }).populate('category');
@@ -14,6 +12,20 @@ const getPageBySlug = (slug) => Page.findOne({ slug, isPublished: true }).popula
 const createPage = (pageData) => Page.create(pageData);
 const updatePage = (id, pageData) => Page.findByIdAndUpdate(id, pageData, { new: true, runValidators: true });
 const deletePage = (id) => Page.findByIdAndDelete(id);
+
+// === BẮT ĐẦU THÊM MỚI ===
+/**
+ * Cập nhật thứ tự của nhiều trang.
+ * @param {Array<{id: string}>} pages - Mảng các đối tượng chứa ID của trang.
+ * @returns {Promise<any>}
+ */
+const updatePageOrder = (pages) => {
+    const promises = pages.map((page, index) => {
+        return Page.findByIdAndUpdate(page.id, { order: index });
+    });
+    return Promise.all(promises);
+};
+// === KẾT THÚC THÊM MỚI ===
 
 // --- Dịch vụ cho PageCategory ---
 const getAllPageCategories = () => PageCategory.find().sort({ name: 1 });
@@ -25,7 +37,6 @@ const deletePageCategory = async (id) => {
     return PageCategory.findByIdAndDelete(id);
 };
 
-// SỬA Ở ĐÂY: Đảm bảo export tất cả các hàm
 module.exports = {
     getAllPages,
     getPageById,
@@ -33,7 +44,7 @@ module.exports = {
     createPage,
     updatePage,
     deletePage,
-    // Thêm các hàm của category vào đây
+    updatePageOrder, // Export hàm mới
     getAllPageCategories,
     getPageCategoryById,
     createPageCategory,

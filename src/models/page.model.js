@@ -12,8 +12,8 @@ const contentBlockSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    alt: { 
-        type: String 
+    alt: {
+        type: String
     },
 }, { _id: true });
 
@@ -35,12 +35,11 @@ const pageSchema = new mongoose.Schema({
         type: [contentBlockSchema],
         default: [],
     },
-    isBlog: { 
+    isBlog: {
         type: Boolean,
         default: false,
         index: true,
     },
-    // --- BẮT ĐẦU: Thêm trường category ---
     category: {
         type: mongoose.Schema.ObjectId,
         ref: 'PageCategory'
@@ -49,7 +48,6 @@ const pageSchema = new mongoose.Schema({
         type: mongoose.Schema.ObjectId,
         ref: 'Topic'
     }],
-    // --- KẾT THÚC ---
     seo: {
         metaTitle: { type: String, trim: true },
         metaDescription: { type: String, trim: true },
@@ -63,12 +61,23 @@ const pageSchema = new mongoose.Schema({
         type: mongoose.Schema.ObjectId,
         ref: 'User'
     },
+    // === BẮT ĐẦU THÊM MỚI ===
+    order: {
+        type: Number,
+        default: 0
+    }
+    // === KẾT THÚC THÊM MỚI ===
 }, { timestamps: true });
 
 // Tự động tạo slug từ title nếu slug không được cung cấp
-pageSchema.pre('save', function(next) {
+pageSchema.pre('save', async function(next) {
     if (!this.slug) {
         this.slug = this.title.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+    }
+    // Tự động gán order cho trang mới tạo
+    if (this.isNew) {
+        const highestOrderPage = await this.constructor.findOne().sort('-order');
+        this.order = (highestOrderPage && typeof highestOrderPage.order === 'number') ? highestOrderPage.order + 1 : 1;
     }
     next();
 });

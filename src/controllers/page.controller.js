@@ -3,40 +3,6 @@ const pageService = require('../services/page.service');
 const { uploadFileToCloudflare } = require('../services/cloudflare.service');
 const sharp = require('sharp');
 
-const processContentFiles = async (contentBlocks, files) => {
-    if (!Array.isArray(contentBlocks) || !Array.isArray(files) || files.length === 0) {
-        return contentBlocks;
-    }
-
-    const fileMap = new Map(files.map(f => [f.originalname, f]));
-
-    const processedBlocks = await Promise.all(contentBlocks.map(async (block) => {
-        if (block.type === 'image' && block.content && block.content.startsWith('[[file:')) {
-            const fileName = block.content.match(/\[\[file:(.*?)\]\]/)[1];
-            const file = fileMap.get(fileName);
-
-            if (file) {
-                try {
-                    const processedBuffer = await sharp(file.buffer)
-                        .resize({ width: 1200, fit: 'inside', withoutEnlargement: true })
-                        .webp({ quality: 80 })
-                        .toBuffer();
-                    
-                    const { url } = await uploadFileToCloudflare(processedBuffer);
-                    
-                    return { ...block, content: url };
-                } catch (error) {
-                    console.error("Lỗi xử lý ảnh nội dung:", error);
-                    return block;
-                }
-            }
-        }
-        return block;
-    }));
-
-    return processedBlocks;
-};
-
 const processContentImages = async (contentBlocks) => {
     if (!Array.isArray(contentBlocks)) return [];
 
@@ -238,4 +204,50 @@ exports.deletePageCategory = async (req, res, next) => {
     } catch (error) {
         next(error);
     }
+};
+
+exports.updatePageOrder = async (req, res, next) => {
+    try {
+        if (!Array.isArray(req.body.pages)) {
+            return res.status(400).json({ status: 'fail', message: 'Dữ liệu pages phải là một mảng.' });
+        }
+        await pageService.updatePageOrder(req.body.pages);
+        res.status(200).json({ status: 'success', message: 'Thứ tự trang được cập nhật thành công.' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const processContentFiles = async (contentBlocks, files) => {
+    if (!Array.isArray(contentBlocks) || !Array.isArray(files) || files.length === 0) {
+        return contentBlocks;
+    }
+
+    const fileMap = new Map(files.map(f => [f.originalname, f]));
+
+    const processedBlocks = await Promise.all(contentBlocks.map(async (block) => {
+        if (block.type === 'image' && block.content && block.content.startsWith('[[file:')) {
+            const fileName = block.content.match(/\[\[file:(.*?)\]\]/)[1];
+            const file = fileMap.get(fileName);
+
+            if (file) {
+                try {
+                    const processedBuffer = await sharp(file.buffer)
+                        .resize({ width: 1200, fit: 'inside', withoutEnlargement: true })
+                        .webp({ quality: 80 })
+                        .toBuffer();
+                    
+                    const { url } = await uploadFileToCloudflare(processedBuffer);
+                    
+                    return { ...block, content: url };
+                } catch (error) {
+                    console.error("Lỗi xử lý ảnh nội dung:", error);
+                    return block;
+                }
+            }
+        }
+        return block;
+    }));
+
+    return processedBlocks;
 };
