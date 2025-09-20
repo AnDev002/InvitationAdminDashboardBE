@@ -1,20 +1,21 @@
-// AdminTrainData/AdminBE/routes/designAsset.routes.js
+// src/routes/designAsset.routes.js
 
 const express = require('express');
 const router = express.Router();
 const { getDesignAssets, createDesignAsset, deleteDesignAsset, seedInitialAssets, bulkCreateAssets, bulkDeleteAssets } = require('../controllers/designAsset.controller');
 const { protect, authorize } = require('../middleware/auth.middleware');
-const { upload, resizeImage, uploadImageToCloudflare } = require('../middleware/upload.middleware');
+const { upload, resizeImage, uploadImageToR2 } = require('../middleware/upload.middleware');
 
 router.get('/', getDesignAssets);
 
 router.post(
-    '/', 
-    protect, 
-    authorize('admin'), 
-    upload.single('image'), 
-    resizeImage, 
-    uploadImageToCloudflare
+    '/',
+    protect,
+    authorize('admin'),
+    upload.single('image'),
+    resizeImage,
+    uploadImageToR2,
+    createDesignAsset // <--- ĐÃ THÊM HÀM CONTROLLER
 );
 
 // Route để xử lý upload hàng loạt
@@ -22,7 +23,7 @@ router.post(
     '/bulk-import',
     protect,
     authorize('admin'),
-    upload.array('images', 50), // Cho phép tải lên tối đa 50 ảnh cùng lúc
+    upload.array('images', 3000),
     bulkCreateAssets
 );
 
