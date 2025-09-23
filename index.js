@@ -17,7 +17,7 @@ const pageRoutes = require('./src/routes/page.routes');
 require('./src/config/passport');
 dotenv.config();
 const app = express();
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 8000;
 const corsOptions = {
   origin: ['http://localhost:3000', 'https://admin.icards.com.vn', 'https://www.admin.icards.com.vn', 'https://www.icards.com.vn', 'https://icards.com.vn'], 
   credentials: true, 

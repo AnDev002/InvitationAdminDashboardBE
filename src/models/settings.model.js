@@ -49,7 +49,8 @@ const bannerSchema = new mongoose.Schema({
     videoUrl: { type: String, default: '' },
     title: { type: String, default: '' },
     subtitle: { type: String, default: '' },
-    htmlContent: { type: String, default: '' }
+    htmlContent: { type: String, default: '' },
+    link: { type: String, default: '' }
 }, { _id: false });
 
 
