@@ -321,16 +321,18 @@ const createTemplate = async (req, res, next) => {
 
 const updateTemplate = async (req, res, next) => {
     try {
+        // Parse JSON strings from FormData
         const updatePayload = {
             ...req.body,
             templateData: JSON.parse(req.body.templateData || '{}'),
             loveGiftsButton: req.body.loveGiftsButton ? JSON.parse(req.body.loveGiftsButton) : null,
         };
         
+        // Pass the request files to the service function
         const updatedTemplate = await invitationTemplateService.updateTemplateById(
             req.params.id,
             updatePayload,
-            req.files 
+            req.files // Pass the files array
         );
 
         if (!updatedTemplate) {

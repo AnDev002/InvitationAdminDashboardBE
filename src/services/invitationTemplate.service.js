@@ -27,6 +27,7 @@ const updateTemplateById = async (id, updateData, files = []) => {
         throw new Error('Không tìm thấy mẫu thiệp để cập nhật.');
     }
 
+    // Directly assign properties from updateData
     Object.assign(template, {
         title: updateData.title,
         category: updateData.category,
@@ -38,15 +39,19 @@ const updateTemplateById = async (id, updateData, files = []) => {
         templateData: updateData.templateData
     });
     
+    // Check for a new thumbnail file and upload it
     const thumbnailFile = files.find(f => f.fieldname === 'generatedThumbnail');
     if (thumbnailFile) {
-        const { url: newThumbnailUrl } = await uploadFileToCloudflare(thumbnailFile.buffer);
+        // Assuming uploadFileToCloudflare handles buffer and returns { url }
+        const { url: newThumbnailUrl } = await uploadFileToCloudflare(thumbnailFile.buffer, thumbnailFile.mimetype);
         template.imgSrc = newThumbnailUrl; 
     }
     
+    // Mark templateData as modified since it's a mixed type
     template.markModified('templateData');
     await template.save();
     
+    // Return the updated document
     return await InvitationTemplate.findById(id);
 };
 

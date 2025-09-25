@@ -2,6 +2,7 @@
 
 import axios from 'axios';
 import FormData from 'form-data';
+const AppError = require('../utils/AppError'); // <-- ADD THIS LINE
 
 // Tạm thời hardcode để debug, sau khi sửa xong hãy chuyển lại vào process.env
 const CLOUDFLARE_ACCOUNT_ID = "e7c5347541597ef74ad3c97cad071393";
