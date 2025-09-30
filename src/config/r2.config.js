@@ -1,7 +1,7 @@
 // src/config/r2.config.js
 
-const S3Client = require('@aws-sdk/client-s3');
-const NodeHttpHandler = ('@smithy/node-http-handler'); // 1. Import NodeHttpHandler
+const { S3Client } = require("@aws-sdk/client-s3");
+const { NodeHttpHandler } = require("@aws-sdk/node-http-handler");
 const dotenv = require('dotenv');
 
 dotenv.config();
