@@ -13,7 +13,7 @@ const R2_PUBLIC_URL = "https://r2.icards.com.vn";
  * @param {string} mimetype - Kiểu MIME của file.
  * @returns {Promise<{key: string, url: string}>} - Key và URL của file đã upload.
  */
-export const uploadFileToR2 = async (fileBuffer, mimetype) => {
+const uploadFileToR2 = async (fileBuffer, mimetype) => {
   // Tạo tên file ngẫu nhiên để tránh trùng lặp
   const fileKey = randomBytes(16).toString('hex');
 
@@ -44,7 +44,7 @@ export const uploadFileToR2 = async (fileBuffer, mimetype) => {
  * @param {string} fileKey - Key của file cần xóa.
  * @returns {Promise<void>}
  */
-export const deleteFileFromR2 = async (fileKey) => {
+const deleteFileFromR2 = async (fileKey) => {
   if (!fileKey) return;
 
   const params = {
@@ -60,4 +60,9 @@ export const deleteFileFromR2 = async (fileKey) => {
     // Không throw error ở đây để tránh làm gián đoạn flow xóa chính,
     // nhưng bạn có thể thay đổi tùy theo yêu cầu của ứng dụng.
   }
+};
+
+module.exports = {
+    uploadFileToR2,
+    deleteFileFromR2,
 };
