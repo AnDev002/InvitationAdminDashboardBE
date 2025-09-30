@@ -37,7 +37,7 @@ const getUploadUrl = async () => {
  * Upload file lên Cloudflare. Hàm này đã đúng từ trước
  * và không cần thay đổi.
  */
-export const uploadFileToCloudflare = async (fileBuffer, contentType) => {
+const uploadFileToCloudflare = async (fileBuffer, contentType) => {
     if (!CLOUDFLARE_API_TOKEN || !CLOUDFLARE_ACCOUNT_ID) {
         throw new AppError('Cloudflare API token or Account ID is not configured.', 500);
     }
@@ -75,7 +75,7 @@ export const uploadFileToCloudflare = async (fileBuffer, contentType) => {
 
 
 // Các hàm deleteFileFromCloudflare và getImageIdFromUrl không thay đổi
-export const deleteFileFromCloudflare = async (imageId) => {
+const deleteFileFromCloudflare = async (imageId) => {
     if (!imageId) return;
     try {
         await axios.delete(
@@ -93,7 +93,7 @@ export const deleteFileFromCloudflare = async (imageId) => {
     }
 };
 
-export const getImageIdFromUrl = (url) => {
+const getImageIdFromUrl = (url) => {
     if (!url || !url.includes(CLOUDFLARE_ACCOUNT_HASH)) {
         return null;
     }
@@ -102,4 +102,11 @@ export const getImageIdFromUrl = (url) => {
         return parts[parts.length - 2];
     }
     return null;
+};
+
+module.exports = {
+  getUploadUrl,
+  deleteFileFromCloudflare,   
+  uploadFileToCloudflare,
+  getImageIdFromUrl
 };
