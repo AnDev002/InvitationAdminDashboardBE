@@ -113,16 +113,23 @@ const settingsSchema = new mongoose.Schema({
 });
 
 const Setting = mongoose.model('Setting', settingsSchema);
-
-Setting.findOne({ singletonKey: "main_settings" }).then(settings => {
-    if (!settings) {
-        console.log("Creating default settings document...");
-        Setting.create({ 
-            singletonKey: "main_settings",
-            banners: [] 
-        });
+const initializeSettings = async () => {
+    try {
+        const settings = await Setting.findOne({ singletonKey: "main_settings" });
+        if (!settings) {
+            console.log("Creating default settings document...");
+            await Setting.create({ 
+                singletonKey: "main_settings"
+                // Bạn có thể thêm các giá trị mặc định khác ở đây nếu muốn
+            });
+        }
+    } catch (error) {
+        console.error("Error initializing settings:", error);
+        // Thoát tiến trình nếu không thể khởi tạo cài đặt, vì đây là lỗi nghiêm trọng
+        process.exit(1); 
     }
-});
+};
 
 
-module.exports = Setting;
+
+module.exports = { Setting, initializeSettings };

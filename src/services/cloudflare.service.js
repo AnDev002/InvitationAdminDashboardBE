@@ -1,8 +1,8 @@
 // AdminBE/services/cloudflare.service.js
 
-import axios from 'axios';
-import FormData from 'form-data';
-const AppError = require('../utils/AppError'); // <-- ADD THIS LINE
+const axios = require('axios');
+const FormData = require('form-data');
+const AppError = require('../utils/AppError.js'); // <-- CORRECTED THIS LINE
 
 // Tạm thời hardcode để debug, sau khi sửa xong hãy chuyển lại vào process.env
 const CLOUDFLARE_ACCOUNT_ID = "e7c5347541597ef74ad3c97cad071393";
@@ -38,11 +38,11 @@ const getUploadUrl = async () => {
  * và không cần thay đổi.
  */
 export const uploadFileToCloudflare = async (fileBuffer, contentType) => {
-    if (!process.env.CLOUDFLARE_API_TOKEN || !process.env.CLOUDFLARE_ACCOUNT_ID) {
+    if (!CLOUDFLARE_API_TOKEN || !CLOUDFLARE_ACCOUNT_ID) {
         throw new AppError('Cloudflare API token or Account ID is not configured.', 500);
     }
 
-    const url = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/images/v1`;
+    const url = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/images/v1`;
 
     try {
         const form = new FormData();
@@ -52,7 +52,7 @@ export const uploadFileToCloudflare = async (fileBuffer, contentType) => {
         const response = await axios.post(url, form, {
             headers: {
                 ...form.getHeaders(),
-                'Authorization': `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
+                'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
             },
         });
 
