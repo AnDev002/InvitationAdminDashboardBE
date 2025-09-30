@@ -1,8 +1,8 @@
 // AdminBE/middleware/upload.middleware.js
 
-import multer from 'multer';
-import sharp from 'sharp';
-import { uploadFileToR2 } from '../services/r2.service.js';
+const multer = require('multer');
+const sharp = require('sharp');
+const uploadFileToR2 = require('../services/r2.service.js');
 
 // Cấu hình multer để lưu file trong memory
 const storage = multer.memoryStorage();
