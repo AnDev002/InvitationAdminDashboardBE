@@ -12,7 +12,7 @@ const secretAccessKey = process.env.SECRET_ACCESS_KEY;
 
 const endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
 
-export const r2 = new S3Client({
+const r2 = new S3Client({
   region: 'auto',
   endpoint: endpoint,
   credentials: {
@@ -27,3 +27,6 @@ export const r2 = new S3Client({
     maxSockets: 200 // **Tăng giới hạn kết nối lên 200 (hoặc cao hơn nếu cần)**
   }),
 });
+module.exports = {
+  r2,
+}
