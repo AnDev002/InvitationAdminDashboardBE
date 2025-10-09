@@ -78,7 +78,7 @@ const uploadFileToCloudflare = async (fileBuffer, contentType) => {
 
 
 // Các hàm deleteFileFromCloudflare và getImageIdFromUrl không thay đổi
-export const deleteFileFromCloudflare = async (imageId) => {
+const deleteFileFromCloudflare = async (imageId) => {
     if (!imageId) return;
     try {
         await axios.delete(
@@ -98,7 +98,7 @@ export const deleteFileFromCloudflare = async (imageId) => {
 };
 
 
-export const getImageIdFromUrl = (url) => {
+const getImageIdFromUrl = (url) => {
     if (!url || !url.includes(CLOUDFLARE_ACCOUNT_HASH)) {
         return null;
     }
@@ -108,4 +108,10 @@ export const getImageIdFromUrl = (url) => {
         return parts[parts.length - 2];
     }
     return null;
+};
+module.exports = {
+    getUploadUrl,
+    uploadFileToCloudflare,
+    deleteFileFromCloudflare,
+    getImageIdFromUrl
 };
