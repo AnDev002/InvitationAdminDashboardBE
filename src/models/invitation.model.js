@@ -91,6 +91,7 @@ const invitationSchema = new mongoose.Schema({
         emailSubject: { type: String, default: '{LờiXưngHô} {TênKháchMời} Đến tham dự buổi tiệc cùng gia đình chúng tôi! - Thiệp mời online' },
         emailBody: { type: String, default: 'Một dấu mốc quan trọng đang đến và chúng tôi rất mong có bạn đồng hành trong khoảnh khắc đáng nhớ này.\nTrân trọng mời bạn tham dự sự kiện đặc biệt của chúng tôi.\nSự hiện diện của bạn là món quà ý nghĩa nhất mà chúng tôi có thể mong chờ!\n\nTrân trọng,\niCard' },
         eventDate: { type: Date, default: () => new Date() },
+        
         groomName: { type: String, default: 'Chú rể' },
         brideName: { type: String, default: 'Cô dâu' },
         groomInfo: { type: String, default: 'Thông tin về chú rể...' },
@@ -127,18 +128,48 @@ const invitationSchema = new mongoose.Schema({
         videoUrl: { type: String, default: '' },
         qrCodes: [
             {
-                title: { // <-- THÊM DÒNG NÀY
-                    type: String,
-                    trim: true,
-                },
-                url: {
-                    type: String,
-                    trim: true,
-                },
+                title: { type: String, trim: true },
+                url: { type: String, trim: true },
             },
         ],
+        
+        // Block 2
+        groomName2: { type: String, default: '' },
+        brideName2: { type: String, default: '' },
+        groomInfo2: { type: String, default: '' },
+        brideInfo2: { type: String, default: '' },
+        groomImageUrl2: { type: String, default: '' },
+        brideImageUrl2: { type: String, default: '' },
+        heroImages2: { main: { type: String }, sub1: { type: String }, sub2: { type: String } },
+        galleryImages2: [{ type: String }],
+        eventDescription2: { type: String },
+        eventLocation2: { address: { type: String }, lat: { type: Number }, lng: { type: Number } },
+        contactGroom2: { type: String },
+        contactBride2: { type: String },
+        musicUrl2: { type: String },
+        videoUrl2: { type: String },
+        qrCodes2: [{ title: { type: String }, url: { type: String } }],
+
+        // Block 3
+        groomName3: { type: String, default: '' },
+        brideName3: { type: String, default: '' },
+        groomInfo3: { type: String, default: '' },
+        brideInfo3: { type: String, default: '' },
+        groomImageUrl3: { type: String, default: '' },
+        brideImageUrl3: { type: String, default: '' },
+        heroImages3: { main: { type: String }, sub1: { type: String }, sub2: { type: String } },
+        galleryImages3: [{ type: String }],
+        eventDescription3: { type: String },
+        eventLocation3: { address: { type: String }, lat: { type: Number }, lng: { type: Number } },
+        contactGroom3: { type: String },
+        contactBride3: { type: String },
+        musicUrl3: { type: String },
+        videoUrl3: { type: String },
+        qrCodes3: [{ title: { type: String }, url: { type: String } }],
     },
     // MỚI: Mảng để lưu trữ các nhóm khách mời tùy chỉnh cho thiệp này
+    customHtmlContent: { type: String, default: '' },
+    customHtmlTitle: { type: String, default: 'Nội dung tùy chỉnh' },
     guestGroups: [guestGroupSchema],
 }, { timestamps: true });
 

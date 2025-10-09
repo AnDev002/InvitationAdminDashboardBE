@@ -1,7 +1,8 @@
 // AdminBE/services/cloudflare.service.js
 
-import axios from 'axios';
-import FormData from 'form-data';
+const axios = require('axios');
+const FormData = require('form-data');
+const AppError = require('../utils/AppError.js'); // <-- CORRECTED THIS LINE
 
 // Tạm thời hardcode để debug, sau khi sửa xong hãy chuyển lại vào process.env
 const CLOUDFLARE_ACCOUNT_ID = "e7c5347541597ef74ad3c97cad071393";
@@ -36,7 +37,7 @@ const getUploadUrl = async () => {
  * Upload file lên Cloudflare. Hàm này đã đúng từ trước
  * và không cần thay đổi.
  */
-export const uploadFileToCloudflare = async (fileBuffer, contentType) => {
+const uploadFileToCloudflare = async (fileBuffer, contentType) => {
     // 1. Kiểm tra xem các biến môi trường cần thiết đã được cấu hình hay chưa.
     if (!process.env.CLOUDFLARE_API_TOKEN || !process.env.CLOUDFLARE_ACCOUNT_ID) {
         throw new AppError('Cloudflare API token or Account ID is not configured.', 500);
@@ -79,7 +80,7 @@ export const uploadFileToCloudflare = async (fileBuffer, contentType) => {
 
 
 // Các hàm deleteFileFromCloudflare và getImageIdFromUrl không thay đổi
-export const deleteFileFromCloudflare = async (imageId) => {
+const deleteFileFromCloudflare = async (imageId) => {
     if (!imageId || !process.env.CLOUDFLARE_ACCOUNT_ID || !process.env.CLOUDFLARE_API_TOKEN) return;
     try {
         await axios.delete(
@@ -98,8 +99,7 @@ export const deleteFileFromCloudflare = async (imageId) => {
     }
 };
 
-
-export const getImageIdFromUrl = (url) => {
+const getImageIdFromUrl = (url) => {
     if (!url || !process.env.CLOUDFLARE_ACCOUNT_HASH || !url.includes(process.env.CLOUDFLARE_ACCOUNT_HASH)) {
         return null;
     }
@@ -109,4 +109,12 @@ export const getImageIdFromUrl = (url) => {
         return parts[parts.length - 2];
     }
     return null;
+};
+
+
+module.exports = {
+  getUploadUrl,
+  deleteFileFromCloudflare,   
+  uploadFileToCloudflare,
+  getImageIdFromUrl
 };

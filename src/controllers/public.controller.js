@@ -1,7 +1,7 @@
 const adminService = require('../services/admin.service');
 const pageCategoryService = require('../services/pageCategory.service');
 const topicService = require('../services/topic.service');
-const Setting = require('../models/settings.model');
+const { Setting } = require('../models/settings.model');
 
 // Controller để lấy cài đặt công khai
 exports.getPublicSettings = async (req, res, next) => {

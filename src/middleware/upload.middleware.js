@@ -1,8 +1,8 @@
 // AdminBE/middleware/upload.middleware.js
 
-import multer from 'multer';
-import sharp from 'sharp';
-import { uploadFileToR2 } from '../services/r2.service.js';
+const multer = require('multer');
+const sharp = require('sharp');
+const uploadFileToR2 = require('../services/r2.service.js');
 
 // Cấu hình multer để lưu file trong memory
 const storage = multer.memoryStorage();
@@ -48,7 +48,7 @@ const fileFilter = (req, file, cb) => {
 
 
 // Tăng giới hạn file size cho video
-export const upload = multer({
+const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: { 
@@ -58,7 +58,7 @@ export const upload = multer({
 });
 
 
-export const resizeImage = async (req, res, next) => {
+const resizeImage = async (req, res, next) => {
   if (!req.file || req.files) {
     return next(); 
   }
@@ -78,7 +78,7 @@ export const resizeImage = async (req, res, next) => {
   }
 };
 
-export const uploadImageToCloudflare = async (req, res, next) => {
+const uploadImageToCloudflare = async (req, res, next) => {
   if (!req.file || req.files) {
     return next();
   }
@@ -99,3 +99,9 @@ export const uploadImageToCloudflare = async (req, res, next) => {
     next(error);
   }
 }
+
+module.exports = {
+  upload,
+  resizeImage,
+  uploadImageToCloudflare,
+};

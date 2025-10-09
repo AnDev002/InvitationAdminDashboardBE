@@ -1,7 +1,8 @@
 // src/services/r2.service.js
-import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { randomBytes } from 'crypto';
-import { r2 } from '../config/r2.config.js';
+const PutObjectCommand = require('@aws-sdk/client-s3');
+const DeleteObjectCommand = require('@aws-sdk/client-s3')
+const randomBytes = require('crypto');
+const r2 = require('../config/r2.config.js');
 
 const BUCKET_NAME = process.env.BUCKET_NAME;
 const R2_PUBLIC_URL = "https://r2.icards.com.vn";
@@ -12,7 +13,7 @@ const R2_PUBLIC_URL = "https://r2.icards.com.vn";
  * @param {string} mimetype - Kiểu MIME của file.
  * @returns {Promise<{key: string, url: string}>} - Key và URL của file đã upload.
  */
-export const uploadFileToR2 = async (fileBuffer, mimetype) => {
+const uploadFileToR2 = async (fileBuffer, mimetype) => {
   // Tạo tên file ngẫu nhiên để tránh trùng lặp
   const fileKey = randomBytes(16).toString('hex');
 
@@ -43,7 +44,7 @@ export const uploadFileToR2 = async (fileBuffer, mimetype) => {
  * @param {string} fileKey - Key của file cần xóa.
  * @returns {Promise<void>}
  */
-export const deleteFileFromR2 = async (fileKey) => {
+const deleteFileFromR2 = async (fileKey) => {
   if (!fileKey) return;
 
   const params = {
@@ -59,4 +60,9 @@ export const deleteFileFromR2 = async (fileKey) => {
     // Không throw error ở đây để tránh làm gián đoạn flow xóa chính,
     // nhưng bạn có thể thay đổi tùy theo yêu cầu của ứng dụng.
   }
+};
+
+module.exports = {
+    uploadFileToR2,
+    deleteFileFromR2,
 };

@@ -1,8 +1,8 @@
 // src/config/r2.config.js
 
-import { S3Client } from '@aws-sdk/client-s3';
-import { NodeHttpHandler } from '@smithy/node-http-handler'; // 1. Import NodeHttpHandler
-import dotenv from 'dotenv';
+const { S3Client } = require("@aws-sdk/client-s3");
+const { NodeHttpHandler } = require("@aws-sdk/node-http-handler");
+const dotenv = require('dotenv');
 
 dotenv.config();
 
@@ -12,7 +12,7 @@ const secretAccessKey = process.env.SECRET_ACCESS_KEY;
 
 const endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
 
-export const r2 = new S3Client({
+const r2 = new S3Client({
   region: 'auto',
   endpoint: endpoint,
   credentials: {
@@ -27,3 +27,7 @@ export const r2 = new S3Client({
     maxSockets: 200 // **Tăng giới hạn kết nối lên 200 (hoặc cao hơn nếu cần)**
   }),
 });
+
+module.exports = {
+    r2,
+};
