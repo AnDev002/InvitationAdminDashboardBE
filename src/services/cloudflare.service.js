@@ -3,6 +3,7 @@
 const axios = require('axios');
 const FormData = require('form-data');
 const AppError = require('../utils/AppError.js'); // <-- CORRECTED THIS LINE
+require('dotenv').config();
 
 // Tạm thời hardcode để debug, sau khi sửa xong hãy chuyển lại vào process.env
 const CLOUDFLARE_ACCOUNT_ID = "e7c5347541597ef74ad3c97cad071393";
@@ -39,12 +40,12 @@ const getUploadUrl = async () => {
  */
 const uploadFileToCloudflare = async (fileBuffer, contentType) => {
     // 1. Kiểm tra xem các biến môi trường cần thiết đã được cấu hình hay chưa.
-    if (!process.env.CLOUDFLARE_API_TOKEN || !process.env.CLOUDFLARE_ACCOUNT_ID) {
+    if (!CLOUDFLARE_API_TOKEN || !CLOUDFLARE_ACCOUNT_ID) {
         throw new AppError('Cloudflare API token or Account ID is not configured.', 500);
     }
 
     // 2. Xây dựng URL endpoint của Cloudflare Images.
-    const url = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/images/v1`;
+    const url = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/images/v1`;
 
     try {
         // 3. Tạo một đối tượng FormData và đính kèm file buffer.
@@ -81,13 +82,13 @@ const uploadFileToCloudflare = async (fileBuffer, contentType) => {
 
 // Các hàm deleteFileFromCloudflare và getImageIdFromUrl không thay đổi
 const deleteFileFromCloudflare = async (imageId) => {
-    if (!imageId || !process.env.CLOUDFLARE_ACCOUNT_ID || !process.env.CLOUDFLARE_API_TOKEN) return;
+    if (!imageId || !CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_API_TOKEN) return;
     try {
         await axios.delete(
-            `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/images/v1/${imageId}`,
+            `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/images/v1/${imageId}`,
             {
                 headers: {
-                    'Authorization': `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
+                    'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
                 },
             }
         );
@@ -100,7 +101,7 @@ const deleteFileFromCloudflare = async (imageId) => {
 };
 
 const getImageIdFromUrl = (url) => {
-    if (!url || !process.env.CLOUDFLARE_ACCOUNT_HASH || !url.includes(process.env.CLOUDFLARE_ACCOUNT_HASH)) {
+    if (!url || !CLOUDFLARE_ACCOUNT_HASH || !url.includes(CLOUDFLARE_ACCOUNT_HASH)) {
         return null;
     }
     const parts = url.split('/');
