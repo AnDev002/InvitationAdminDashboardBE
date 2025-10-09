@@ -19,6 +19,12 @@ const CLOUDFLARE_ACCOUNT_HASH = "mYCNH6-2h27PJijuhYd-fw";
  * @returns {Promise<{id: string, url: string}>} - ID và URL công khai của ảnh đã tải lên.
  */
 const uploadFileToCloudflare = async (fileBuffer, contentType) => {
+    // === BẮT ĐẦU THÊM MỚI: LOG ĐỂ GỠ LỖI ===
+    console.log("--- [DEBUG] Cloudflare Upload ---");
+    console.log("Sử dụng Account ID:", CLOUDFLARE_ACCOUNT_ID);
+    console.log("Sử dụng API Token (5 ký tự đầu):", CLOUDFLARE_API_TOKEN ? CLOUDFLARE_API_TOKEN.substring(0, 5) + "..." : "!!! TOKEN BỊ THIẾU !!!");
+    // === KẾT THÚC THÊM MỚI ===
+
     if (!CLOUDFLARE_API_TOKEN || !CLOUDFLARE_ACCOUNT_ID) {
         throw new AppError('Cloudflare API token or Account ID is not configured.', 500);
     }
@@ -32,7 +38,6 @@ const uploadFileToCloudflare = async (fileBuffer, contentType) => {
         const response = await axios.post(url, form, {
             headers: {
                 ...form.getHeaders(),
-                // SỬA LỖI: Luôn sử dụng hằng số CLOUDFLARE_API_TOKEN đã khai báo ở trên
                 'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
             },
         });
@@ -64,7 +69,6 @@ const deleteFileFromCloudflare = async (imageId) => {
             `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/images/v1/${imageId}`,
             {
                 headers: {
-                    // SỬA LỖI: Sử dụng hằng số CLOUDFLARE_API_TOKEN
                     'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
                 },
             }
@@ -87,7 +91,6 @@ const getImageIdFromUrl = (url) => {
     }
     const parts = url.split('/');
     if (parts.length >= 5) {
-        // ID ảnh thường là phần tử thứ 4 từ cuối lên (ngay sau account hash)
         return parts[parts.length - 2];
     }
     return null;
