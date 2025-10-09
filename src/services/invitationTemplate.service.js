@@ -1,6 +1,7 @@
 // AdminBE/services/invitationTemplate.service.js
 const InvitationTemplate = require('../models/invitationTemplate.model');
-const { uploadFileToCloudflare } = require('./cloudflare.service'); 
+// SỬA ĐỔI: Chuyển sang sử dụng R2 service đã có
+const { uploadFileToR2 } = require('./r2.service'); 
 const sharp = require('sharp');
 const axios = require('axios');
 
@@ -42,8 +43,8 @@ const updateTemplateById = async (id, updateData, files = []) => {
     // Check for a new thumbnail file and upload it
     const thumbnailFile = files.find(f => f.fieldname === 'generatedThumbnail');
     if (thumbnailFile) {
-        // Assuming uploadFileToCloudflare handles buffer and returns { url }
-        const { url: newThumbnailUrl } = await uploadFileToCloudflare(thumbnailFile.buffer, thumbnailFile.mimetype);
+        // SỬA ĐỔI: Sử dụng uploadFileToR2
+        const { url: newThumbnailUrl } = await uploadFileToR2(thumbnailFile.buffer, thumbnailFile.mimetype);
         template.imgSrc = newThumbnailUrl; 
     }
     

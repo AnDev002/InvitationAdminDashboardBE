@@ -6,9 +6,11 @@ const Settings = require('../models/settings.model');
 const invitationTemplateService = require('../services/invitationTemplate.service');
 const APIFeatures = require('../utils/apiFeature');
 const sharp = require('sharp');
-const { uploadFileToCloudflare } = require('../services/cloudflare.service');
+// SỬA ĐỔI: Chuyển sang sử dụng R2 service đã có
+const { uploadFileToR2 } = require('../services/r2.service');
 const xlsx = require('xlsx');
 const AdmZip = require('adm-zip');
+
 const bulkCreateTemplates = async (req, res, next) => {
     try {
         const allowedMimeTypes = ['application/zip', 'application/x-zip-compressed', 'multipart/x-zip', 'application/octet-stream'];
@@ -68,7 +70,8 @@ const bulkCreateTemplates = async (req, res, next) => {
                     .resize({ width: 1920, fit: 'inside', withoutEnlargement: true })
                     .webp({ quality: 85 })
                     .toBuffer();
-                const { url } = await uploadFileToCloudflare(processedBuffer);
+                // SỬA ĐỔI: Sử dụng uploadFileToR2, cần truyền mimetype
+                const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
                 return url;
             };
             
@@ -188,7 +191,8 @@ const processContentImages = async (htmlContent) => {
             .webp({ quality: 80 })
             .toBuffer();
         
-        const { url } = await uploadFileToCloudflare(processedBuffer);
+        // SỬA ĐỔI: Sử dụng uploadFileToR2
+        const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
         newHtmlContent = newHtmlContent.replace(imgTag, `<img src="${url}" />`);
     }
     return newHtmlContent;
@@ -279,7 +283,8 @@ const createTemplate = async (req, res, next) => {
                     .resize({ width: 800, fit: 'inside', withoutEnlargement: true })
                     .webp({ quality: 90 })
                     .toBuffer();
-                const { url } = await uploadFileToCloudflare(processedBuffer);
+                // SỬA ĐỔI: Sử dụng uploadFileToR2
+                const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
                 return { fieldname: file.fieldname, url: url };
             });
 
