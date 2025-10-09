@@ -11,6 +11,17 @@ require('dotenv').config();
 const CLOUDFLARE_ACCOUNT_ID = "e7c5347541597ef74ad3c97cad071393";
 const CLOUDFLARE_API_TOKEN = "iimJzYvdP73ZNjq95BgaogjOaOsZ8L0RoAbHZ5YL";
 const CLOUDFLARE_ACCOUNT_HASH = "mYCNH6-2h27PJijuhYd-fw";
+// AdminBE/services/cloudflare.service.js
+
+const axios = require('axios');
+const FormData = require('form-data');
+const AppError = require('../utils/AppError.js');
+require('dotenv').config();
+
+// SỬA LỖI: Lấy thông tin xác thực từ biến môi trường thay vì hardcode
+const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
+const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+const CLOUDFLARE_ACCOUNT_HASH = process.env.CLOUDFLARE_ACCOUNT_HASH;
 
 /**
  * Upload file lên Cloudflare Images.
@@ -19,8 +30,9 @@ const CLOUDFLARE_ACCOUNT_HASH = "mYCNH6-2h27PJijuhYd-fw";
  * @returns {Promise<{id: string, url: string}>} - ID và URL công khai của ảnh đã tải lên.
  */
 const uploadFileToCloudflare = async (fileBuffer, contentType) => {
+    // Kiểm tra xem các biến môi trường đã được thiết lập chưa
     if (!CLOUDFLARE_API_TOKEN || !CLOUDFLARE_ACCOUNT_ID) {
-        throw new AppError('Cloudflare API token or Account ID is not configured.', 500);
+        throw new AppError('Cloudflare API token or Account ID is not configured in .env file.', 500);
     }
 
     const url = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/images/v1`;
@@ -32,7 +44,6 @@ const uploadFileToCloudflare = async (fileBuffer, contentType) => {
         const response = await axios.post(url, form, {
             headers: {
                 ...form.getHeaders(),
-                // SỬA LỖI: Luôn sử dụng hằng số CLOUDFLARE_API_TOKEN đã khai báo ở trên
                 'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
             },
         });
@@ -49,6 +60,10 @@ const uploadFileToCloudflare = async (fileBuffer, contentType) => {
         };
     } catch (error) {
         console.error('Axios error during Cloudflare upload:', error.response ? error.response.data : error.message);
+        // Ném lỗi với thông điệp rõ ràng hơn
+        if (error.response?.status === 403) {
+            throw new AppError('Cloudflare authorization failed. Please check your API Token and Account ID.', 403);
+        }
         throw new AppError(error.message || 'An unexpected error occurred during file upload.', error.response?.status || 500);
     }
 };
@@ -64,7 +79,6 @@ const deleteFileFromCloudflare = async (imageId) => {
             `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/images/v1/${imageId}`,
             {
                 headers: {
-                    // SỬA LỖI: Sử dụng hằng số CLOUDFLARE_API_TOKEN
                     'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
                 },
             }
