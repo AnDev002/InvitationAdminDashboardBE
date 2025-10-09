@@ -1,8 +1,8 @@
 // src/services/r2.service.js
-const PutObjectCommand = require('@aws-sdk/client-s3');
-const DeleteObjectCommand = require('@aws-sdk/client-s3')
-const randomBytes = require('crypto');
-const r2 = require('../config/r2.config.js');
+const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+// SỬA LỖI: Import module 'crypto' một cách chính xác
+const crypto = require('crypto');
+const { r2 } = require('../config/r2.config.js');
 
 const BUCKET_NAME = process.env.BUCKET_NAME;
 const R2_PUBLIC_URL = "https://r2.icards.com.vn";
@@ -14,8 +14,8 @@ const R2_PUBLIC_URL = "https://r2.icards.com.vn";
  * @returns {Promise<{key: string, url: string}>} - Key và URL của file đã upload.
  */
 const uploadFileToR2 = async (fileBuffer, mimetype) => {
-  // Tạo tên file ngẫu nhiên để tránh trùng lặp
-  const fileKey = randomBytes(16).toString('hex');
+  // SỬA LỖI: Sử dụng crypto.randomBytes để tạo tên file ngẫu nhiên
+  const fileKey = crypto.randomBytes(16).toString('hex');
 
   const params = {
     Bucket: BUCKET_NAME,
