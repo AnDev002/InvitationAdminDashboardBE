@@ -9,7 +9,7 @@ require('dotenv').config();
 // Các thông tin xác thực đang được sử dụng trực tiếp từ đây.
 // Quan trọng: Hãy đảm bảo các giá trị này là chính xác.
 const CLOUDFLARE_ACCOUNT_ID = "e7c5347541597ef74ad3c97cad071393";
-const CLOUDFLARE_API_TOKEN = "0PYlIHJ22loaR9LRsJQHII8FOs_d6VojDnuEBDIK";
+const CLOUDFLARE_API_TOKEN = "iimJzYvdP73ZNjq95BgaogjOaOsZ8L0RoAbHZ5YL";
 const CLOUDFLARE_ACCOUNT_HASH = "mYCNH6-2h27PJijuhYd-fw";
 
 /**
