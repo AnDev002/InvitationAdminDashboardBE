@@ -32,7 +32,7 @@ const uploadFileToCloudflare = async (fileBuffer, contentType) => {
         const response = await axios.post(url, form, {
             headers: {
                 ...form.getHeaders(),
-                // SỬA LỖI: Luôn sử dụng hằng số CLOUDFLARE_API_TOKEN đã khai báo ở trên
+                // SỬA LỖI: Sử dụng dấu backtick (`) thay cho dấu nháy đơn (') để template literal hoạt động
                 'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
             },
         });
@@ -64,7 +64,7 @@ const deleteFileFromCloudflare = async (imageId) => {
             `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/images/v1/${imageId}`,
             {
                 headers: {
-                    // SỬA LỖI: Sử dụng hằng số CLOUDFLARE_API_TOKEN
+                    // SỬA LỖI: Sử dụng dấu backtick (`) thay cho dấu nháy đơn (')
                     'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
                 },
             }
