@@ -3,16 +3,20 @@
 const axios = require('axios');
 const FormData = require('form-data');
 const AppError = require('../utils/AppError.js');
+// Thêm dòng này để nạp các biến môi trường từ file .env (nếu có trong tương lai)
+require('dotenv').config();
 
+// Các thông tin xác thực đang được sử dụng trực tiếp từ đây.
+// Quan trọng: Hãy đảm bảo các giá trị này là chính xác.
 const CLOUDFLARE_ACCOUNT_ID = "e7c5347541597ef74ad3c97cad071393";
 const CLOUDFLARE_API_TOKEN = "0PYlIHJ22loaR9LRsJQHII8FOs_d6VojDnuEBDIK";
 const CLOUDFLARE_ACCOUNT_HASH = "mYCNH6-2h27PJijuhYd-fw";
 
 /**
  * Upload file lên Cloudflare Images.
- * @param {Buffer} fileBuffer - Buffer của file.
- * @param {string} contentType - Kiểu MIME của file.
- * @returns {Promise<{id: string, url: string}>} - ID và URL của ảnh đã tải lên.
+ * @param {Buffer} fileBuffer - Buffer của file (dữ liệu nhị phân).
+ * @param {string} contentType - Kiểu MIME của file (ví dụ: 'image/webp').
+ * @returns {Promise<{id: string, url: string}>} - ID và URL công khai của ảnh đã tải lên.
  */
 const uploadFileToCloudflare = async (fileBuffer, contentType) => {
     if (!CLOUDFLARE_API_TOKEN || !CLOUDFLARE_ACCOUNT_ID) {
@@ -28,7 +32,7 @@ const uploadFileToCloudflare = async (fileBuffer, contentType) => {
         const response = await axios.post(url, form, {
             headers: {
                 ...form.getHeaders(),
-                // SỬA LỖI: Sử dụng hằng số CLOUDFLARE_API_TOKEN thay vì process.env
+                // SỬA LỖI: Luôn sử dụng hằng số CLOUDFLARE_API_TOKEN đã khai báo ở trên
                 'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
             },
         });
@@ -41,7 +45,7 @@ const uploadFileToCloudflare = async (fileBuffer, contentType) => {
         const result = response.data.result;
         return {
             id: result.id,
-            url: result.variants[0]
+            url: result.variants[0] // Trả về URL của variant công khai
         };
     } catch (error) {
         console.error('Axios error during Cloudflare upload:', error.response ? error.response.data : error.message);
