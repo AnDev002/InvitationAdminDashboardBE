@@ -3,14 +3,13 @@
 const axios = require('axios');
 const FormData = require('form-data');
 const AppError = require('../utils/AppError.js');
-// Thêm dòng này để nạp các biến môi trường từ file .env (nếu có trong tương lai)
+// Nạp các biến môi trường từ file .env
 require('dotenv').config();
 
-// Các thông tin xác thực đang được sử dụng trực tiếp từ đây.
-// Quan trọng: Hãy đảm bảo các giá trị này là chính xác.
-const CLOUDFLARE_ACCOUNT_ID = "e7c5347541597ef74ad3c97cad071393";
-const CLOUDFLARE_API_TOKEN = "iimJzYvdP73ZNjq95BgaogjOaOsZ8L0RoAbHZ5YL";
-const CLOUDFLARE_ACCOUNT_HASH = "mYCNH6-2h27PJijuhYd-fw";
+// SỬA LỖI: Đọc thông tin xác thực từ biến môi trường
+const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
+const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+const CLOUDFLARE_ACCOUNT_HASH = process.env.CLOUDFLARE_ACCOUNT_HASH;
 
 /**
  * Upload file lên Cloudflare Images.
@@ -19,14 +18,10 @@ const CLOUDFLARE_ACCOUNT_HASH = "mYCNH6-2h27PJijuhYd-fw";
  * @returns {Promise<{id: string, url: string}>} - ID và URL công khai của ảnh đã tải lên.
  */
 const uploadFileToCloudflare = async (fileBuffer, contentType) => {
-    // === BẮT ĐẦU THÊM MỚI: LOG ĐỂ GỠ LỖI ===
-    console.log("--- [DEBUG] Cloudflare Upload ---");
-    console.log("Sử dụng Account ID:", CLOUDFLARE_ACCOUNT_ID);
-    console.log("Sử dụng API Token (5 ký tự đầu):", CLOUDFLARE_API_TOKEN ? CLOUDFLARE_API_TOKEN.substring(0, 5) + "..." : "!!! TOKEN BỊ THIẾU !!!");
-    // === KẾT THÚC THÊM MỚI ===
-
     if (!CLOUDFLARE_API_TOKEN || !CLOUDFLARE_ACCOUNT_ID) {
-        throw new AppError('Cloudflare API token or Account ID is not configured.', 500);
+        // Cung cấp thông báo lỗi rõ ràng hơn
+        console.error("!!! LỖI CẤU HÌNH: CLOUDFLARE_ACCOUNT_ID hoặc CLOUDFLARE_API_TOKEN chưa được thiết lập trong file .env");
+        throw new AppError('Cấu hình Cloudflare bị thiếu phía server.', 500);
     }
 
     const url = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/images/v1`;
@@ -43,14 +38,15 @@ const uploadFileToCloudflare = async (fileBuffer, contentType) => {
         });
 
         if (!response.data.success) {
-            console.error('Error uploading to Cloudflare Images:', response.data);
-            throw new AppError('Failed to upload file to Cloudflare Images.', 500, response.data.errors);
+            console.error('Lỗi từ Cloudflare API:', response.data);
+            const errorMessage = response.data.errors?.[0]?.message || 'Failed to upload to Cloudflare.';
+            throw new AppError(errorMessage, 500);
         }
 
         const result = response.data.result;
         return {
             id: result.id,
-            url: result.variants[0] // Trả về URL của variant công khai
+            url: result.variants[0]
         };
     } catch (error) {
         console.error('Axios error during Cloudflare upload:', error.response ? error.response.data : error.message);
