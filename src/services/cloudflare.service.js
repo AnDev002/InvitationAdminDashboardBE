@@ -3,14 +3,14 @@
 const axios = require('axios');
 const FormData = require('form-data');
 const AppError = require('../utils/AppError.js');
-// Thêm dòng này để nạp các biến môi trường từ file .env
+// Thêm dòng này để nạp các biến môi trường từ file .env (nếu có trong tương lai)
 require('dotenv').config();
 
-// SỬA LỖI: Chuyển các hằng số thành biến môi trường để tăng tính bảo mật và linh hoạt
-const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
-const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
-const CLOUDFLARE_ACCOUNT_HASH = process.env.CLOUDFLARE_ACCOUNT_HASH;
-
+// Các thông tin xác thực đang được sử dụng trực tiếp từ đây.
+// Quan trọng: Hãy đảm bảo các giá trị này là chính xác.
+const CLOUDFLARE_ACCOUNT_ID = "e7c5347541597ef74ad3c97cad071393";
+const CLOUDFLARE_API_TOKEN = "iimJzYvdP73ZNjq95BgaogjOaOsZ8L0RoAbHZ5YL";
+const CLOUDFLARE_ACCOUNT_HASH = "mYCNH6-2h27PJijuhYd-fw";
 
 /**
  * Upload file lên Cloudflare Images.
@@ -19,9 +19,8 @@ const CLOUDFLARE_ACCOUNT_HASH = process.env.CLOUDFLARE_ACCOUNT_HASH;
  * @returns {Promise<{id: string, url: string}>} - ID và URL công khai của ảnh đã tải lên.
  */
 const uploadFileToCloudflare = async (fileBuffer, contentType) => {
-    // Kiểm tra xem các biến môi trường đã được cấu hình chưa
     if (!CLOUDFLARE_API_TOKEN || !CLOUDFLARE_ACCOUNT_ID) {
-        throw new AppError('Cloudflare API token or Account ID is not configured in .env file.', 500);
+        throw new AppError('Cloudflare API token or Account ID is not configured.', 500);
     }
 
     const url = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/images/v1`;
@@ -33,15 +32,14 @@ const uploadFileToCloudflare = async (fileBuffer, contentType) => {
         const response = await axios.post(url, form, {
             headers: {
                 ...form.getHeaders(),
+                // SỬA LỖI: Luôn sử dụng hằng số CLOUDFLARE_API_TOKEN đã khai báo ở trên
                 'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
             },
         });
 
         if (!response.data.success) {
             console.error('Error uploading to Cloudflare Images:', response.data);
-            // Cung cấp thông báo lỗi chi tiết hơn
-            const errorMessage = response.data.errors.length > 0 ? response.data.errors[0].message : 'Failed to upload file to Cloudflare Images.';
-            throw new AppError(errorMessage, 500, response.data.errors);
+            throw new AppError('Failed to upload file to Cloudflare Images.', 500, response.data.errors);
         }
 
         const result = response.data.result;
@@ -50,11 +48,8 @@ const uploadFileToCloudflare = async (fileBuffer, contentType) => {
             url: result.variants[0] // Trả về URL của variant công khai
         };
     } catch (error) {
-        // Bắt lỗi từ axios và AppError để cung cấp thông tin rõ ràng
         console.error('Axios error during Cloudflare upload:', error.response ? error.response.data : error.message);
-        const statusCode = error.response?.status || 500;
-        const message = error.isOperational ? error.message : 'An unexpected error occurred during file upload.';
-        throw new AppError(message, statusCode);
+        throw new AppError(error.message || 'An unexpected error occurred during file upload.', error.response?.status || 500);
     }
 };
 
@@ -69,6 +64,7 @@ const deleteFileFromCloudflare = async (imageId) => {
             `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/images/v1/${imageId}`,
             {
                 headers: {
+                    // SỬA LỖI: Sử dụng hằng số CLOUDFLARE_API_TOKEN
                     'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
                 },
             }
@@ -86,15 +82,13 @@ const deleteFileFromCloudflare = async (imageId) => {
  * @returns {string|null}
  */
 const getImageIdFromUrl = (url) => {
-    // SỬA LỖI: Kiểm tra CLOUDFLARE_ACCOUNT_HASH trước khi sử dụng
     if (!url || !CLOUDFLARE_ACCOUNT_HASH || !url.includes(CLOUDFLARE_ACCOUNT_HASH)) {
         return null;
     }
     const parts = url.split('/');
-    // Vị trí ID có thể thay đổi, tìm phần tử ngay sau Account Hash
-    const hashIndex = parts.findIndex(part => part === CLOUDFLARE_ACCOUNT_HASH);
-    if (hashIndex !== -1 && hashIndex + 1 < parts.length) {
-        return parts[hashIndex + 1];
+    if (parts.length >= 5) {
+        // ID ảnh thường là phần tử thứ 4 từ cuối lên (ngay sau account hash)
+        return parts[parts.length - 2];
     }
     return null;
 };
