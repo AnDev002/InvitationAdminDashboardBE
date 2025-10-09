@@ -12,17 +12,6 @@ const CLOUDFLARE_ACCOUNT_ID = "e7c5347541597ef74ad3c97cad071393";
 const CLOUDFLARE_API_TOKEN = "iimJzYvdP73ZNjq95BgaogjOaOsZ8L0RoAbHZ5YL";
 const CLOUDFLARE_ACCOUNT_HASH = "mYCNH6-2h27PJijuhYd-fw";
 // AdminBE/services/cloudflare.service.js
-
-const axios = require('axios');
-const FormData = require('form-data');
-const AppError = require('../utils/AppError.js');
-require('dotenv').config();
-
-// SỬA LỖI: Lấy thông tin xác thực từ biến môi trường thay vì hardcode
-const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
-const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
-const CLOUDFLARE_ACCOUNT_HASH = process.env.CLOUDFLARE_ACCOUNT_HASH;
-
 /**
  * Upload file lên Cloudflare Images.
  * @param {Buffer} fileBuffer - Buffer của file (dữ liệu nhị phân).
