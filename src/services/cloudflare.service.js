@@ -37,17 +37,20 @@ const getUploadUrl = async () => {
  * và không cần thay đổi.
  */
 export const uploadFileToCloudflare = async (fileBuffer, contentType) => {
+    // 1. Kiểm tra xem các biến môi trường cần thiết đã được cấu hình hay chưa.
     if (!process.env.CLOUDFLARE_API_TOKEN || !process.env.CLOUDFLARE_ACCOUNT_ID) {
         throw new AppError('Cloudflare API token or Account ID is not configured.', 500);
     }
 
+    // 2. Xây dựng URL endpoint của Cloudflare Images.
     const url = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/images/v1`;
 
     try {
+        // 3. Tạo một đối tượng FormData và đính kèm file buffer.
         const form = new FormData();
-        // Tạo một Blob với đúng contentType để FormData gửi đi chính xác
         form.append('file', fileBuffer, { contentType });
 
+        // 4. Gửi yêu cầu POST đến API của Cloudflare bằng Axios.
         const response = await axios.post(url, form, {
             headers: {
                 ...form.getHeaders(),
@@ -55,11 +58,13 @@ export const uploadFileToCloudflare = async (fileBuffer, contentType) => {
             },
         });
 
+        // 5. Kiểm tra phản hồi từ Cloudflare.
         if (!response.data.success) {
             console.error('Error uploading to Cloudflare Images:', response.data);
             throw new AppError('Failed to upload file to Cloudflare Images.', 500, response.data.errors);
         }
 
+        // 6. Trả về ID và URL của ảnh nếu thành công.
         const result = response.data.result;
         return {
             id: result.id,
@@ -67,36 +72,39 @@ export const uploadFileToCloudflare = async (fileBuffer, contentType) => {
         };
     } catch (error) {
         console.error('Axios error during Cloudflare upload:', error.response ? error.response.data : error.message);
+        // Ném ra một AppError để được xử lý bởi global error handler.
         throw new AppError(error.message || 'An unexpected error occurred during file upload.', error.response?.status || 500);
     }
 };
 
 
-
 // Các hàm deleteFileFromCloudflare và getImageIdFromUrl không thay đổi
 export const deleteFileFromCloudflare = async (imageId) => {
-    if (!imageId) return;
+    if (!imageId || !process.env.CLOUDFLARE_ACCOUNT_ID || !process.env.CLOUDFLARE_API_TOKEN) return;
     try {
         await axios.delete(
-            `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/images/v1/${imageId}`,
+            `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/images/v1/${imageId}`,
             {
                 headers: {
-                    'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
+                    'Authorization': `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
                 },
             }
         );
     } catch (error) {
+        // Không báo lỗi nếu ảnh không tồn tại (lỗi 404), chỉ báo các lỗi khác.
         if (error.response?.status !== 404) {
             console.error(`Error deleting image ${imageId} from Cloudflare:`, error.response?.data);
         }
     }
 };
 
+
 export const getImageIdFromUrl = (url) => {
-    if (!url || !url.includes(CLOUDFLARE_ACCOUNT_HASH)) {
+    if (!url || !process.env.CLOUDFLARE_ACCOUNT_HASH || !url.includes(process.env.CLOUDFLARE_ACCOUNT_HASH)) {
         return null;
     }
     const parts = url.split('/');
+    // ID thường nằm ở phần tử thứ 2 từ cuối trong URL (ví dụ: .../images/v1/IMAGE_ID/variant)
     if (parts.length >= 5) {
         return parts[parts.length - 2];
     }

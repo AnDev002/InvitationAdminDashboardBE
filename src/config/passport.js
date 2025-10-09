@@ -7,7 +7,7 @@ const User = require('../models/user.model');
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: "https://ons-weekends-construction-warm.trycloudflare.com/api/auth/google/callback",
+    callbackURL: "https://created-sufficient-relevance-probably.trycloudflare.com/api/auth/google/callback",
   },
   async (accessToken, refreshToken, profile, done) => {
     try {
@@ -39,7 +39,7 @@ passport.use(new GoogleStrategy({
 passport.use(new FacebookStrategy({
     clientID: process.env.FACEBOOK_APP_ID,
     clientSecret: process.env.FACEBOOK_APP_SECRET,
-    callbackURL: `https://ons-weekends-construction-warm.trycloudflare.com/api/auth/facebook/callback`,
+    callbackURL: `https://created-sufficient-relevance-probably.trycloudflare.com/api/auth/facebook/callback`,
     profileFields: ['id', 'displayName', 'photos', 'email']
   },
   async (accessToken, refreshToken, profile, done) => {
