@@ -49,6 +49,12 @@ const uploadFileToCloudflare = async (fileBuffer, contentType) => {
         const form = new FormData();
         form.append('file', fileBuffer, { contentType });
 
+        console.log("--- DEBUGGING CLOUDFLARE UPLOAD ---");
+        console.log("Account ID being used:", process.env.CLOUDFLARE_ACCOUNT_ID);
+        // Chỉ log vài ký tự đầu của token để đảm bảo an toàn
+        console.log("Token starts with:", process.env.CLOUDFLARE_API_TOKEN ? process.env.CLOUDFLARE_API_TOKEN.substring(0, 5) : "Token not found!");
+        console.log("-------------------------------------");
+
         // 4. Gửi yêu cầu POST đến API của Cloudflare bằng Axios.
         const response = await axios.post(url, form, {
             headers: {
