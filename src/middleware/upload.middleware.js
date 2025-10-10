@@ -2,7 +2,7 @@
 
 const multer = require('multer');
 const sharp = require('sharp');
-const uploadFileToR2 = require('../services/r2.service.js');
+const { uploadFileToR2 } = require('../services/r2.service.js');
 
 // Cấu hình multer để lưu file trong memory
 const storage = multer.memoryStorage();
@@ -77,6 +77,28 @@ const resizeImage = async (req, res, next) => {
     next(error);
   }
 };
+const uploadImageToR2 = async (req, res, next) => {
+// === KẾT THÚC THAY ĐỔI ===
+  if (!req.file || req.files) {
+    return next();
+  }
+
+  try {
+    const { buffer } = req.file;
+    // Bây giờ, hàm uploadFileToR2 đã được gọi chính xác
+    const cfData = await uploadFileToR2(buffer, req.file.mimetype, req.file.originalname);
+
+    // Gắn URL và ID của R2 vào request
+    req.file.cfUrl = cfData.url;
+    req.file.cfId = cfData.id;
+
+    next();
+  } catch (error) {
+    // === SỬA LỖI: Cải thiện thông báo lỗi ===
+    console.error('Lỗi khi tải ảnh lên R2:', error);
+    next(error);
+  }
+}
 
 const uploadImageToCloudflare = async (req, res, next) => {
   if (!req.file || req.files) {
@@ -104,4 +126,5 @@ module.exports = {
   upload,
   resizeImage,
   uploadImageToCloudflare,
+  uploadImageToR2
 };
