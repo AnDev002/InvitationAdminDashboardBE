@@ -19,7 +19,7 @@ const getUploadUrl = async () => {
 
         const response = await axios.post(
             `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/images/v2/direct_upload`,
-            null, // This is correct, the body should be null for this request
+            null,
             {
                 headers: {
                     'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
@@ -28,7 +28,26 @@ const getUploadUrl = async () => {
         );
         return response.data.result.uploadURL;
     } catch (error) {
-        console.error('Error getting Cloudflare upload URL:', error.response?.data);
+        // --- START: ENHANCED ERROR LOGGING ---
+        console.error('--- Full error details from getUploadUrl ---');
+        if (error.response) {
+            // The request was made and the server responded with a status code
+            // that falls out of the range of 2xx
+            console.error('Data:', error.response.data);
+            console.error('Status:', error.response.status);
+            console.error('Headers:', error.response.headers);
+        } else if (error.request) {
+            // The request was made but no response was received
+            console.error('Request Error: No response was received. This could be a firewall or network issue.');
+            console.error('Request details:', error.request);
+        } else {
+            // Something happened in setting up the request that triggered an Error
+            console.error('Axios Setup Error:', error.message);
+        }
+        console.error('Full Error Object:', error);
+        console.error('--------------------------------------------');
+        // --- END: ENHANCED ERROR LOGGING ---
+
         throw new Error('Could not get the URL for image upload.');
     }
 };
