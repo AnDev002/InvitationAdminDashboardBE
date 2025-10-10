@@ -23,7 +23,7 @@ router.post(
     '/bulk-import',
     protect,
     authorize('admin'),
-    upload.array('images', 200), // Cho phép tải lên tối đa 50 ảnh cùng lúc
+    upload.array('images', 350), // Cho phép tải lên tối đa 50 ảnh cùng lúc
     bulkCreateAssets
 );
 

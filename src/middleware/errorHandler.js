@@ -53,6 +53,9 @@ const errorHandler = (err, req, res, next) => {
         if (error.code === 'LIMIT_FILE_COUNT') {
             error = new AppError('Bạn đã tải lên quá nhiều tệp cùng lúc. Vui lòng thử lại với số lượng ít hơn.', 400);
         }
+        if (error.code === 'LIMIT_FIELD_COUNT') {
+            error = new AppError('Bạn đã gửi quá nhiều trường trong form. Vui lòng kiểm tra lại.', 400);
+        }
     }
     // KẾT THÚC THAY ĐỔI
 
