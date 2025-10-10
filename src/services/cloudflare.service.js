@@ -3,6 +3,7 @@
 const axios = require('axios');
 const FormData = require('form-data');
 const AppError = require('../utils/AppError.js'); // <-- CORRECTED THIS LINE
+require('dotenv').config();
 
 // Tạm thời hardcode để debug, sau khi sửa xong hãy chuyển lại vào process.env
 const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
