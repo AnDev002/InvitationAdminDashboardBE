@@ -1,5 +1,6 @@
-const express = require("express");
 const dotenv = require("dotenv");
+dotenv.config();
+const express = require("express");
 const mongoose = require("mongoose");
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
@@ -15,7 +16,6 @@ const invitationTemplateRoutes = require('./src/routes/invitationTemplate.routes
 const publicRoutes = require('./src/routes/public.routes');
 const pageRoutes = require('./src/routes/page.routes');
 require('./src/config/passport');
-dotenv.config();
 const app = express();
 const port = process.env.PORT || 8000;
 const corsOptions = {
