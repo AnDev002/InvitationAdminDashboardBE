@@ -15,7 +15,7 @@ const FONT_MIME_TYPES = [
     'application/font-woff2',
     'application/x-font-truetype',
     'application/x-font-opentype',
-    'application/vnd.ms-fontobject', // Dành cho .eot
+    'application/vnd.ms-fontobject',
     'application/font-sfnt',
     'application/octet-stream' // Kiểu nhị phân chung, thường được dùng làm dự phòng
 ];
@@ -52,8 +52,8 @@ const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: { 
-      fileSize: 1024 * 1024 * 50, // Giới hạn 50MB mỗi file (cho video)
-      files: 50 // Giới hạn 50 files mỗi request
+      fileSize: 1024 * 1024 * 500, 
+      files: 200
   }, 
 });
 
