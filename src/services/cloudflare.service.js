@@ -5,9 +5,9 @@ const FormData = require('form-data');
 const AppError = require('../utils/AppError.js'); // <-- CORRECTED THIS LINE
 
 // Tạm thời hardcode để debug, sau khi sửa xong hãy chuyển lại vào process.env
-const CLOUDFLARE_ACCOUNT_ID = "e7c5347541597ef74ad3c97cad071393";
-const CLOUDFLARE_API_TOKEN = "0PYlIHJ22loaR9LRsJQHII8FOs_d6VojDnuEBDIK";
-const CLOUDFLARE_ACCOUNT_HASH = "mYCNH6-2h27PJijuhYd-fw";
+const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
+const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+const CLOUDFLARE_ACCOUNT_HASH = process.env.CLOUDFLARE_ACCOUNT_HASH;
 
 /**
  * === HÀM ĐÃ SỬA LỖI ===
