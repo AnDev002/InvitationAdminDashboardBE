@@ -1,119 +1,64 @@
 // AdminBE/services/cloudflare.service.js
-const axios = require('axios');
-const FormData = require('form-data');
-
-// Ensure your .env variables are loaded correctly before this file is imported
-const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
-const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
-const CLOUDFLARE_ACCOUNT_HASH = process.env.CLOUDFLARE_ACCOUNT_HASH;
+const { uploadFileToR2, deleteFileFromR2 } = require('./r2.service');
+const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || "https://pub-f720e3221ef5464a93d19bbdae2cfb86.r2.dev";
 
 /**
- * Step 1: Get a one-time upload URL from Cloudflare.
- * This is the secure and recommended way to handle uploads.
+ * [ĐÃ SỬA]
+ * Hàm này bây giờ sẽ upload file lên R2 thay vì Cloudflare Images.
+ * @param {Buffer} fileBuffer - Buffer của file.
+ * @param {string} mimetype - Kiểu MIME của file.
+ * @returns {Promise<{url: string, id: string}>} - URL công khai và key của file.
  */
-const getUploadUrl = async () => {
+const uploadFileToCloudflare = async (fileBuffer, mimetype = 'image/webp') => {
     try {
-        if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_API_TOKEN) {
-            throw new Error('Cloudflare Account ID or API Token is not configured in the .env file.');
-        }
-
-        const response = await axios.post(
-            `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/images/v2/direct_upload`,
-            null,
-            {
-                headers: {
-                    'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
-                },
-            }
-        );
-        return response.data.result.uploadURL;
-    } catch (error) {
-        // --- START: ENHANCED ERROR LOGGING ---
-        console.error('--- Full error details from getUploadUrl ---');
-        if (error.response) {
-            // The request was made and the server responded with a status code
-            // that falls out of the range of 2xx
-            console.error('Data:', error.response.data);
-            console.error('Status:', error.response.status);
-            console.error('Headers:', error.response.headers);
-        } else if (error.request) {
-            // The request was made but no response was received
-            console.error('Request Error: No response was received. This could be a firewall or network issue.');
-            console.error('Request details:', error.request);
-        } else {
-            // Something happened in setting up the request that triggered an Error
-            console.error('Axios Setup Error:', error.message);
-        }
-        console.error('Full Error Object:', error);
-        console.error('--------------------------------------------');
-        // --- END: ENHANCED ERROR LOGGING ---
-
-        throw new Error('Could not get the URL for image upload.');
-    }
-};
-
-/**
- * Step 2: Upload the actual file buffer to the one-time URL.
- */
-const uploadFileToCloudflare = async (fileBuffer) => {
-    try {
-        const uploadURL = await getUploadUrl();
-
-        const form = new FormData();
-        // The field name must be 'file' for Cloudflare Images
-        form.append('file', fileBuffer, 'image.webp');
-
-        const response = await axios.post(uploadURL, form, {
-            headers: {
-                ...form.getHeaders(),
-            },
-        });
-
-        const result = response.data.result;
+        // Gọi hàm upload của R2 service
+        const { key, url } = await uploadFileToR2(fileBuffer, mimetype);
         return {
-            id: result.id,
-            // Construct the public URL using your account hash
-            url: `https://imagedelivery.net/${CLOUDFLARE_ACCOUNT_HASH}/${result.id}/public`,
+            id: key, // Dùng key của R2 làm ID
+            url: url
         };
     } catch (error) {
-        console.error('Error uploading file to Cloudflare Images:', error.response?.data);
-        throw new Error('File upload to Cloudflare Images failed.');
+        console.error('Lỗi khi tải file lên R2 từ cloudflare.service:', error);
+        throw new Error('Tải file lên R2 thất bại.');
     }
 };
 
-const deleteFileFromCloudflare = async (imageId) => {
-    if (!imageId) return;
+/**
+ * [ĐÃ SỬA]
+ * Hàm này sẽ xóa file trên R2.
+ * @param {string} fileKey - Key của file trên R2 (chính là imageId).
+ */
+const deleteFileFromCloudflare = async (fileKey) => {
+    if (!fileKey) return;
     try {
-        await axios.delete(
-            `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/images/v1/${imageId}`,
-            {
-                headers: {
-                    'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
-                },
-            }
-        );
+        await deleteFileFromR2(fileKey);
     } catch (error) {
-        if (error.response?.status !== 404) {
-            console.error(`Error deleting image ${imageId} from Cloudflare:`, error.response?.data);
-        }
+        console.error(`Lỗi khi xóa file ${fileKey} từ R2:`, error);
     }
 };
 
+/**
+ * [ĐÃ SỬA]
+ * Lấy file key từ URL của R2.
+ * @param {string} url - URL của file.
+ * @returns {string|null} - Key của file.
+ */
 const getImageIdFromUrl = (url) => {
-    if (!url || !CLOUDFLARE_ACCOUNT_HASH || !url.includes(CLOUDFLARE_ACCOUNT_HASH)) {
+    if (!url || !url.startsWith(R2_PUBLIC_URL)) {
         return null;
     }
-    const parts = url.split('/');
-    if (parts.length >= 5) {
-        // The image ID is typically the second to last part of the URL path
-        return parts[parts.length - 2];
-    }
-    return null;
+    // Key chính là phần cuối cùng của URL
+    return url.substring(R2_PUBLIC_URL.length + 1);
+};
+
+// Giữ lại getUploadUrl để tránh lỗi ở những chỗ chưa kịp sửa, nhưng nó sẽ không làm gì cả.
+const getUploadUrl = async () => {
+    return Promise.resolve('');
 };
 
 module.exports = {
-  getUploadUrl,
-  uploadFileToCloudflare,
-  deleteFileFromCloudflare,
-  getImageIdFromUrl
+    getUploadUrl,
+    uploadFileToCloudflare,
+    deleteFileFromCloudflare,
+    getImageIdFromUrl
 };
