@@ -3,8 +3,13 @@
 const multer = require('multer');
 const sharp = require('sharp');
 const { uploadFileToR2 } = require('../services/r2.service.js');
+// === START: MODIFICATION ===
+// Import dịch vụ Cloudflare Images THỰC SỰ (đã sửa ở bước 1)
+const { uploadFileToCloudflare: uploadToCfImages } = require('../services/cloudflare.service.js');
+// === END: MODIFICATION ===
 
-// Cấu hình multer để lưu file trong memory
+
+// ... (storage, FONT_MIME_TYPES, fileFilter, upload, resizeImage giữ nguyên) ...
 const storage = multer.memoryStorage();
 const FONT_MIME_TYPES = [
     'font/ttf',
@@ -17,14 +22,12 @@ const FONT_MIME_TYPES = [
     'application/x-font-opentype',
     'application/vnd.ms-fontobject',
     'application/font-sfnt',
-    'application/octet-stream' // Kiểu nhị phân chung, thường được dùng làm dự phòng
+    'application/octet-stream' 
 ];
 
-// === START: MODIFICATION ===
-// Cập nhật fileFilter để chấp nhận video
 const fileFilter = (req, file, cb) => {
     const allowedImageMimeTypes = file.mimetype.startsWith('image/');
-    const allowedVideoMimeTypes = file.mimetype.startsWith('video/'); // Thêm dòng này
+    const allowedVideoMimeTypes = file.mimetype.startsWith('video/'); 
     const allowedFontMimeTypes = FONT_MIME_TYPES.includes(file.mimetype);
     const allowedZipMimeTypes = [
         'application/zip', 
@@ -32,7 +35,6 @@ const fileFilter = (req, file, cb) => {
         'multipart/x-zip'
     ].includes(file.mimetype);
 
-    // Thêm allowedVideoMimeTypes vào điều kiện if
     if (allowedImageMimeTypes || allowedFontMimeTypes || allowedZipMimeTypes || allowedVideoMimeTypes) {
         cb(null, true);
     } else {
@@ -40,14 +42,10 @@ const fileFilter = (req, file, cb) => {
             cb(null, true);
             return;
         }
-        // Cập nhật thông báo lỗi
         cb(new Error('File không hợp lệ! Vui lòng chỉ tải lên ảnh, video, font chữ hoặc file .zip.'), false);
     }
 };
-// === END: MODIFICATION ===
 
-
-// Tăng giới hạn file size cho video
 const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
@@ -77,29 +75,26 @@ const resizeImage = async (req, res, next) => {
     next(error);
   }
 };
+
+// Hàm này dùng cho R2 (fonts, videos), giữ nguyên
 const uploadImageToR2 = async (req, res, next) => {
-// === KẾT THÚC THAY ĐỔI ===
   if (!req.file || req.files) {
     return next();
   }
-
   try {
     const { buffer } = req.file;
-    // Bây giờ, hàm uploadFileToR2 đã được gọi chính xác
     const cfData = await uploadFileToR2(buffer, req.file.mimetype, req.file.originalname);
-
-    // Gắn URL và ID của R2 vào request
     req.file.cfUrl = cfData.url;
-    req.file.cfId = cfData.id;
-
+    req.file.cfId = cfData.id; // (hoặc key)
     next();
   } catch (error) {
-    // === SỬA LỖI: Cải thiện thông báo lỗi ===
     console.error('Lỗi khi tải ảnh lên R2:', error);
     next(error);
   }
 }
 
+// === START: MODIFICATION ===
+// Sửa hàm này để nó gọi Cloudflare Images (uploadToCfImages)
 const uploadImageToCloudflare = async (req, res, next) => {
   if (!req.file || req.files) {
     return next();
@@ -107,24 +102,24 @@ const uploadImageToCloudflare = async (req, res, next) => {
 
   try {
     const { buffer } = req.file;
-    // Lưu ý: Tên hàm uploadFileToCloudflare có thể cần đổi thành tên chung hơn 
-    // như uploadFileToR2 nếu bạn dùng chung service
-    const cfData = await uploadFileToR2(buffer, req.file.mimetype, req.file.originalname);
+    // Gọi dịch vụ Cloudflare Images đã được import
+    const cfData = await uploadToCfImages(buffer, req.file.mimetype);
 
-    // Gắn URL và ID của Cloudflare vào request
+    // Gắn URL và ID của Cloudflare Images vào request
     req.file.cfUrl = cfData.url;
-    req.file.cfId = cfData.id; // Nếu R2 trả về ID
+    req.file.cfId = cfData.id; 
 
     next();
   } catch (error) {
-    console.error('Error uploading image to Cloudflare:', error);
+    console.error('Error uploading image to Cloudflare Images:', error);
     next(error);
   }
 }
+// === END: MODIFICATION ===
 
 module.exports = {
   upload,
   resizeImage,
-  uploadImageToCloudflare,
-  uploadImageToR2
+  uploadImageToCloudflare, // (Giờ đã trỏ đến Cloudflare Images)
+  uploadImageToR2 // (Vẫn trỏ đến R2)
 };

@@ -36,21 +36,35 @@ exports.updateSettings = async (req, res, next) => {
                 
                 // === START: MODIFICATION ===
                 if (file.mimetype.startsWith('video/')) {
-                    // Video được tải lên R2
+                    // 1. Video được tải lên R2
                     const { url } = await uploadFileToR2(file.buffer, file.mimetype, file.originalname);
                     finalUrl = url;
-                } else if (file.mimetype.startsWith('image/') && file.mimetype !== 'image/gif' && file.mimetype !== 'image/svg+xml') {
-                    // Ảnh (JPG, PNG,...) được xử lý, chuyển thành webp và tải lên Cloudflare Images
-                    const fileBuffer = await sharp(file.buffer)
-                        .resize({ width: 1920, fit: 'inside', withoutEnlargement: true })
-                        .webp({ quality: 85 })
-                        .toBuffer();
-                    
-                    // Gửi buffer đã xử lý và contentType mới ('image/webp')
-                    const { url } = await uploadFileToCloudflare(fileBuffer, 'image/webp');
+                
+                } else if (file.mimetype.startsWith('font/') || file.mimetype === 'application/octet-stream') {
+                    // 2. Font (hoặc file nhị phân) được tải lên R2
+                    const { url } = await uploadFileToR2(file.buffer, file.mimetype, file.originalname);
                     finalUrl = url;
+
+                } else if (file.mimetype.startsWith('image/')) {
+                    // 3. TẤT CẢ các loại ảnh (JPG, PNG, GIF, SVG) đi qua Cloudflare Images
+                    
+                    // Chỉ xử lý (resize, webp) các ảnh không phải GIF/SVG
+                    if (file.mimetype !== 'image/gif' && file.mimetype !== 'image/svg+xml') {
+                        const fileBuffer = await sharp(file.buffer)
+                            .resize({ width: 1920, fit: 'inside', withoutEnlargement: true })
+                            .webp({ quality: 85 })
+                            .toBuffer();
+                        
+                        // Gửi buffer đã xử lý và contentType mới ('image/webp')
+                        const { url } = await uploadFileToCloudflare(fileBuffer, 'image/webp');
+                        finalUrl = url;
+                    } else {
+                        // Giữ nguyên GIF và SVG, tải trực tiếp lên Cloudflare Images
+                        const { url } = await uploadFileToCloudflare(file.buffer, file.mimetype);
+                        finalUrl = url;
+                    }
                 } else {
-                    // Các loại file khác (SVG, GIF, Font...) được tải lên R2
+                     // 4. Các loại file khác (nếu có) mặc định lên R2
                     const { url } = await uploadFileToR2(file.buffer, file.mimetype, file.originalname);
                     finalUrl = url;
                 }
