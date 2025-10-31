@@ -32,11 +32,11 @@ const bulkCreateTemplates = async (req, res, next) => {
             return res.status(400).json({ message: 'File data.xlsx rỗng hoặc không có dữ liệu hợp lệ.' });
         }
 
-        const imageMap = new Map();
+        const imageEntryMap = new Map();
         zipEntries.forEach(entry => {
             if (entry.entryName.startsWith('images/') && !entry.isDirectory) {
                 const fileName = entry.entryName.split('/').pop();
-                imageMap.set(fileName.toLowerCase(), entry.getData());
+                imageEntryMap.set(fileName.toLowerCase(), entry); // Chỉ lưu tham chiếu, không đọc buffer
             }
         });
         
@@ -60,10 +60,15 @@ const bulkCreateTemplates = async (req, res, next) => {
             const uploadImageByName = async (imageName) => {
                 if (!imageName) return null;
                 const lowerCaseImageName = imageName.toLowerCase();
-                if (!imageMap.has(lowerCaseImageName)) {
+
+                // Lấy entry từ map
+                if (!imageEntryMap.has(lowerCaseImageName)) {
                     throw new Error(`Ảnh "${imageName}" được khai báo trong Excel nhưng không tìm thấy trong thư mục /images/ của file zip.`);
                 }
-                const imageBuffer = imageMap.get(lowerCaseImageName);
+
+                // *** CHỈ ĐỌC BUFFER KHI THỰC SỰ CẦN DÙNG ***
+                const imageBuffer = imageEntryMap.get(lowerCaseImageName).getData(); // Đọc buffer tại đây
+
                 const processedBuffer = await sharp(imageBuffer)
                     .resize({ width: 1920, fit: 'inside', withoutEnlargement: true })
                     .webp({ quality: 85 })

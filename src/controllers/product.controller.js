@@ -13,11 +13,21 @@ const processContentImages = async (htmlContent) => {
     let newHtmlContent = htmlContent;
     for (const imgTag of matches) {
         const base64Data = imgTag.match(/src="data:image\/[^;]+;base64,([^"]+)"/)[1];
+
+        const stringLength = base64Data.length;
+        const sizeInBytes = 4 * Math.ceil(stringLength / 3) * 0.5624896334383812; // Ước tính kích thước byte
+        const sizeInMb = sizeInBytes / 1024 / 1024;
+
+        if (sizeInMb > 10) { // Giới hạn 10MB cho mỗi ảnh nhúng
+            console.warn('Skipping an embedded image that is too large:', sizeInMb.toFixed(2), 'MB');
+            continue; // Bỏ qua ảnh này, không xử lý
+        }
+
         const buffer = Buffer.from(base64Data, 'base64');
         const processedBuffer = await sharp(buffer)
-            .resize({ width: 1200, fit: 'inside', withoutEnlargement: true })
-            .webp({ quality: 80 })
-            .toBuffer();
+          .resize({ width: 1200, fit: 'inside', withoutEnlargement: true })
+          .webp({ quality: 80 })
+          .toBuffer();
         
         const { url } = await uploadFileToR2(processedBuffer, 'image/webp');
         newHtmlContent = newHtmlContent.replace(imgTag, `<img src="${url}" />`);
