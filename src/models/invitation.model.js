@@ -122,6 +122,13 @@ const invitationSchema = new mongoose.Schema({
             lat: { type: Number, default: 21.028511 }, // Mặc định là Hà Nội
             lng: { type: Number, default: 105.804817 } // Mặc định là Hà Nội
         },
+        loveStory: [{
+            id: String,
+            title: String,
+            date: String,
+            description: String,
+            imageUrl: String 
+        }],
         contactGroom: { type: String, default: '09xxxxxxxx' },
         contactBride: { type: String, default: '08xxxxxxxx' },
         musicUrl: { type: String, default: '' },
