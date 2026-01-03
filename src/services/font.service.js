@@ -47,7 +47,20 @@ const bulkDeleteFontsByIds = async (ids) => {
     return Font.deleteMany({ _id: { $in: ids } });
 };
 // === KẾT THÚC THÊM MỚI ===
+const bulkUpsertFonts = async (fontsData) => {
+    const operations = fontsData.map(font => ({
+        updateOne: {
+            filter: { name: font.name }, // Tìm theo tên
+            update: { $set: font },      // Cập nhật thông tin mới (bao gồm URL mới)
+            upsert: true                 // Nếu chưa có thì tạo mới
+        }
+    }));
 
+    if (operations.length > 0) {
+        return await Font.bulkWrite(operations);
+    }
+    return [];
+};
 
 module.exports = {
     getAllFonts,
@@ -56,4 +69,5 @@ module.exports = {
     bulkCreateFonts,
     updateFontById,       // Export hàm mới
     bulkDeleteFontsByIds, // Export hàm mới
+    bulkUpsertFonts,
 };

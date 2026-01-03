@@ -2,6 +2,7 @@
 const fontService = require('../services/font.service');
 // *** BƯỚC 1: IMPORT HÀM TẢI TỆP TỪ R2 SERVICE ***
 const { uploadFileToR2 } = require('../services/r2.service.js');
+const Font = require('../models/font.model');
 
 exports.getPublicFonts = async (req, res, next) => {
     try {
@@ -58,49 +59,75 @@ exports.deleteFont = async (req, res, next) => {
 exports.bulkCreateFonts = async (req, res, next) => {
     try {
         const files = req.files;
-        const metadata = JSON.parse(req.body.metadata || '[]');
+        // Parse metadata an toàn
+        let metadata = [];
+        try {
+            metadata = JSON.parse(req.body.metadata || '[]');
+        } catch (e) {
+            return res.status(400).json({ message: 'Dữ liệu metadata không hợp lệ (JSON parse error).' });
+        }
+
+        const overwrite = req.body.overwrite === 'true'; // Cờ cho phép ghi đè
 
         if (!files || files.length === 0) {
             return res.status(400).json({ message: 'Vui lòng chọn ít nhất một file font.' });
         }
 
+        // *** FIX LỖI "Cannot read properties of undefined" ***
         if (files.length !== metadata.length) {
-            return res.status(400).json({ message: 'Số lượng file và metadata không khớp.' });
+            return res.status(400).json({ 
+                message: `Dữ liệu không khớp: Nhận được ${files.length} file nhưng có ${metadata.length} thông tin metadata.` 
+            });
         }
 
-        // *** BƯỚC 2: THAY THẾ TOÀN BỘ LOGIC UPLOAD CŨ ***
-        // Đoạn mã này sẽ lặp qua từng file, tải lên R2 và lấy URL thật
+        // BƯỚC 1: KIỂM TRA TRÙNG LẶP (Nếu chưa bật overwrite)
+        const incomingNames = metadata.map(m => m.name);
+        // Tìm các font đã tồn tại trong DB có tên nằm trong danh sách upload
+        const existingFonts = await Font.find({ name: { $in: incomingNames } }).select('name');
+        
+        if (existingFonts.length > 0 && !overwrite) {
+            const duplicateNames = existingFonts.map(f => f.name);
+            // Trả về lỗi 409 kèm danh sách tên bị trùng để Frontend hiển thị
+            return res.status(409).json({
+                status: 'fail',
+                code: 'DUPLICATE_FONTS',
+                message: 'Phát hiện font trùng tên.',
+                duplicates: duplicateNames
+            });
+        }
+
+        // BƯỚC 2: UPLOAD FILE LÊN R2
+        // Chỉ upload khi không trùng hoặc người dùng đã đồng ý ghi đè
         const uploadPromises = files.map(async (file, index) => {
-            // Gọi hàm tải tệp cho mỗi file trong danh sách
+            const meta = metadata[index];
+            
+            // Check an toàn lần nữa
+            if (!meta || !meta.name) {
+                throw new Error(`Metadata bị thiếu tại vị trí ${index}`);
+            }
+
             const { url } = await uploadFileToR2(file.buffer, file.mimetype);
 
-            // Trả về object hoàn chỉnh với URL thật
             return {
-                name: metadata[index].name,
-                category: metadata[index].category || 'Custom',
+                name: meta.name,
+                category: meta.category || 'Custom',
                 url: url
             };
         });
-        // *** KẾT THÚC THAY THẾ ***
 
-        const fontsToCreate = await Promise.all(uploadPromises);
+        const fontsToProcess = await Promise.all(uploadPromises);
 
-        const newFonts = await fontService.bulkCreateFonts(fontsToCreate);
+        // BƯỚC 3: LƯU VÀO DB (SỬ DỤNG BULK WRITE ĐỂ UPSERT)
+        // Thay vì gọi insertMany (sẽ lỗi nếu trùng), ta gọi hàm xử lý bulk upsert
+        const result = await fontService.bulkUpsertFonts(fontsToProcess);
 
         res.status(201).json({
             status: 'success',
-            message: `Đã thêm thành công ${newFonts.length} font.`,
-            data: newFonts
+            message: `Đã xử lý thành công ${fontsToProcess.length} font.`,
+            data: result
         });
 
     } catch (error) {
-        // Xử lý lỗi nếu có font bị trùng tên
-        if (error.code === 11000) {
-            return res.status(409).json({
-                message: `Thêm mới thất bại. Có ${error.writeErrors.length} lỗi, có thể do trùng tên font.`,
-                errors: error.writeErrors.map(e => `Font '${e.op.name}' đã tồn tại.`),
-            });
-        }
         next(error);
     }
 };
