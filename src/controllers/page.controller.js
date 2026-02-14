@@ -3,23 +3,54 @@ const pageService = require('../services/page.service');
 const { uploadFileToCloudflare } = require('../services/cloudflare.service');
 const sharp = require('sharp');
 
-const processContentImages = async (contentBlocks) => {
-    if (!Array.isArray(contentBlocks)) return [];
+// --- Helper: Xử lý Thumbnail riêng biệt ---
+const processThumbnail = async (files) => {
+    if (!files || files.length === 0) return null;
+    
+    // Tìm file có fieldname là 'thumbnail'
+    const thumbFile = files.find(f => f.fieldname === 'thumbnail');
+    if (!thumbFile) return null;
+
+    try {
+        const buffer = await sharp(thumbFile.buffer)
+            .resize({ width: 800, height: 500, fit: 'cover' }) // Resize chuẩn Card
+            .webp({ quality: 80 })
+            .toBuffer();
+        
+        const { url } = await uploadFileToCloudflare(buffer);
+        return url;
+    } catch (error) {
+        console.error("Lỗi xử lý Thumbnail:", error);
+        return null;
+    }
+};
+
+// --- Helper: Xử lý ảnh trong nội dung bài viết (giữ nguyên của bạn) ---
+const processContentFiles = async (contentBlocks, files) => {
+    if (!Array.isArray(contentBlocks) || !Array.isArray(files) || files.length === 0) {
+        return contentBlocks;
+    }
+
+    const fileMap = new Map(files.map(f => [f.originalname, f]));
 
     const processedBlocks = await Promise.all(contentBlocks.map(async (block) => {
-        if (block.type === 'image' && block.content && block.content.startsWith('data:image')) {
+        if (block.type === 'image' && block.content && block.content.startsWith('[[file:')) {
             try {
-                const base64Data = block.content.replace(/^data:image\/\w+;base64,/, "");
-                const buffer = Buffer.from(base64Data, 'base64');
+                const match = block.content.match(/\[\[file:(.*?)\]\]/);
+                if (!match) return block;
+                
+                const fileName = match[1];
+                const file = fileMap.get(fileName);
 
-                const processedBuffer = await sharp(buffer)
-                    .resize({ width: 1200, fit: 'inside', withoutEnlargement: true })
-                    .webp({ quality: 80 })
-                    .toBuffer();
-                
-                const { url } = await uploadFileToCloudflare(processedBuffer);
-                
-                return { ...block, content: url };
+                if (file) {
+                    const processedBuffer = await sharp(file.buffer)
+                        .resize({ width: 1200, fit: 'inside', withoutEnlargement: true })
+                        .webp({ quality: 80 })
+                        .toBuffer();
+                    
+                    const { url } = await uploadFileToCloudflare(processedBuffer);
+                    return { ...block, content: url };
+                }
             } catch (error) {
                 console.error("Lỗi xử lý ảnh nội dung:", error);
                 return block;
@@ -30,6 +61,8 @@ const processContentImages = async (contentBlocks) => {
 
     return processedBlocks;
 };
+
+// --- Controllers ---
 
 exports.getPublicPages = async (req, res, next) => {
     try {
@@ -46,13 +79,11 @@ exports.getPublicPages = async (req, res, next) => {
     }
 };
 
-
 exports.getPages = async (req, res, next) => {
     try {
         const query = {};
         if (req.query.isBlog) query.isBlog = req.query.isBlog === 'true';
         if (req.query.isPublished) query.isPublished = req.query.isPublished === 'true';
-        // Thêm query cho category
         if (req.query.category) query.category = req.query.category;
         
         const pages = await pageService.getAllPages(query); 
@@ -73,16 +104,21 @@ exports.getPage = async (req, res, next) => {
 
 exports.createPage = async (req, res, next) => {
     try {
-        if (!req.user || !req.user.id) {
-            return res.status(401).json({ message: 'Xác thực không thành công, không thể xác định tác giả.' });
-        }
-        
         const pageData = { ...req.body };
+        
+        // 1. Xử lý Thumbnail (New Logic)
+        const thumbnailUrl = await processThumbnail(req.files);
+        if (thumbnailUrl) {
+            pageData.thumbnail = thumbnailUrl;
+        }
+
+        // 2. Parse dữ liệu JSON
         if (pageData.topics && typeof pageData.topics === 'string') {
             pageData.topics = JSON.parse(pageData.topics);
         }
         const contentBlocks = JSON.parse(pageData.content || '[]');
 
+        // 3. Xử lý ảnh trong nội dung
         const processedContent = await processContentFiles(contentBlocks, req.files);
         pageData.content = processedContent;
 
@@ -97,7 +133,7 @@ exports.createPage = async (req, res, next) => {
         res.status(201).json({ status: 'success', data: newPage });
     } catch (error) {
         if (error.code === 11000) {
-            return res.status(409).json({ message: 'Lỗi: Đường dẫn (slug) này đã tồn tại. Vui lòng chọn một đường dẫn khác.' });
+            return res.status(409).json({ message: 'Lỗi: Đường dẫn (slug) này đã tồn tại.' });
         }
         next(error);
     }
@@ -107,24 +143,32 @@ exports.updatePage = async (req, res, next) => {
     try {
         const pageData = { ...req.body };
 
-        // --- BẮT ĐẦU THÊM LOGIC DỌN DẸP ---
-        pageData.isBlog = pageData.isBlog === 'true';
+        // 1. Xử lý Thumbnail khi update (New Logic)
+        // Nếu có file mới upload -> process và lấy URL mới
+        const newThumbnailUrl = await processThumbnail(req.files);
+        if (newThumbnailUrl) {
+            pageData.thumbnail = newThumbnailUrl;
+        } else if (pageData.thumbnailUrl) {
+            // Nếu không có file mới, nhưng Frontend gửi 'thumbnailUrl' cũ -> giữ nguyên
+            pageData.thumbnail = pageData.thumbnailUrl;
+        }
+        // Xóa trường thừa để tránh lỗi schema nếu có
+        delete pageData.thumbnailUrl;
 
-        // 1. Nếu không phải là blog, luôn xóa category
+        // 2. Logic dọn dẹp Category
+        pageData.isBlog = pageData.isBlog === 'true';
         if (!pageData.isBlog) {
             pageData.category = null;
-        } 
-        // 2. Nếu là blog nhưng category rỗng, cũng đặt là null
-        else if (pageData.category === '') {
+        } else if (pageData.category === '' || pageData.category === 'null') {
             pageData.category = null;
         }
-        // --- KẾT THÚC LOGIC DỌN DẸP ---
 
+        // 3. Parse và xử lý nội dung
         if (pageData.topics && typeof pageData.topics === 'string') {
             pageData.topics = JSON.parse(pageData.topics);
         }
-        const contentBlocks = JSON.parse(pageData.content || '[]');
         
+        const contentBlocks = JSON.parse(pageData.content || '[]');
         const processedContent = await processContentFiles(contentBlocks, req.files);
         pageData.content = processedContent;
 
@@ -132,19 +176,16 @@ exports.updatePage = async (req, res, next) => {
             pageData.seo = JSON.parse(pageData.seo);
         }
 
-        // Dùng pageData đã được làm sạch để cập nhật
         const updatedPage = await pageService.updatePage(req.params.id, pageData);
         if (!updatedPage) return res.status(404).json({ message: 'Không tìm thấy trang' });
         res.status(200).json({ status: 'success', data: updatedPage });
     } catch (error) { 
         if (error.code === 11000) {
-            return res.status(409).json({ message: 'Lỗi: Đường dẫn (slug) này đã tồn tại. Vui lòng chọn một đường dẫn khác.' });
+            return res.status(409).json({ message: 'Lỗi: Đường dẫn (slug) này đã tồn tại.' });
         }
         next(error); 
     }
 };
-
-
 
 exports.deletePage = async (req, res, next) => {
     try {
@@ -177,7 +218,7 @@ exports.createPageCategory = async (req, res, next) => {
         res.status(201).json({ status: 'success', data: newCategory });
     } catch (error) {
         if (error.code === 11000) {
-            return res.status(409).json({ message: 'Lỗi: Tên hoặc đường dẫn (slug) của danh mục đã tồn tại.' });
+            return res.status(409).json({ message: 'Lỗi: Tên hoặc slug danh mục đã tồn tại.' });
         }
         next(error);
     }
@@ -190,7 +231,7 @@ exports.updatePageCategory = async (req, res, next) => {
         res.status(200).json({ status: 'success', data: updatedCategory });
     } catch (error) {
         if (error.code === 11000) {
-            return res.status(409).json({ message: 'Lỗi: Tên hoặc đường dẫn (slug) của danh mục đã tồn tại.' });
+            return res.status(409).json({ message: 'Lỗi: Tên hoặc slug danh mục đã tồn tại.' });
         }
         next(error);
     }
@@ -216,38 +257,4 @@ exports.updatePageOrder = async (req, res, next) => {
     } catch (error) {
         next(error);
     }
-};
-
-const processContentFiles = async (contentBlocks, files) => {
-    if (!Array.isArray(contentBlocks) || !Array.isArray(files) || files.length === 0) {
-        return contentBlocks;
-    }
-
-    const fileMap = new Map(files.map(f => [f.originalname, f]));
-
-    const processedBlocks = await Promise.all(contentBlocks.map(async (block) => {
-        if (block.type === 'image' && block.content && block.content.startsWith('[[file:')) {
-            const fileName = block.content.match(/\[\[file:(.*?)\]\]/)[1];
-            const file = fileMap.get(fileName);
-
-            if (file) {
-                try {
-                    const processedBuffer = await sharp(file.buffer)
-                        .resize({ width: 1200, fit: 'inside', withoutEnlargement: true })
-                        .webp({ quality: 80 })
-                        .toBuffer();
-                    
-                    const { url } = await uploadFileToCloudflare(processedBuffer);
-                    
-                    return { ...block, content: url };
-                } catch (error) {
-                    console.error("Lỗi xử lý ảnh nội dung:", error);
-                    return block;
-                }
-            }
-        }
-        return block;
-    }));
-
-    return processedBlocks;
 };
