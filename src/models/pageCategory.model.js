@@ -15,6 +15,11 @@ const pageCategorySchema = new mongoose.Schema({
         trim: true,
         lowercase: true,
     },
+    parent: {
+        type: mongoose.Schema.ObjectId,
+        ref: 'PageCategory',
+        default: null
+    },
     order: { // Thêm trường mới để sắp xếp
         type: Number,
         default: 0

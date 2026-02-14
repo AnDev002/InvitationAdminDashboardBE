@@ -65,7 +65,16 @@ const pageSchema = new mongoose.Schema({
     order: {
         type: Number,
         default: 0
-    }
+    },
+    thumbnail: {
+        type: String,
+        default: null // Lưu URL ảnh từ Cloudflare/S3
+    },
+    summary: {
+        type: String, 
+        trim: true,
+        maxLength: 500 // Giới hạn độ dài cho đoạn mô tả ngắn
+    },
     // === KẾT THÚC THÊM MỚI ===
 }, { timestamps: true });
 
