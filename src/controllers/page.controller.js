@@ -126,11 +126,17 @@ exports.createPage = async (req, res, next) => {
         if (pageData.topics && typeof pageData.topics === 'string') {
             pageData.topics = JSON.parse(pageData.topics);
         }
-        const contentBlocks = JSON.parse(pageData.content || '[]');
+        let contentData = pageData.content;
 
-        // 3. Xử lý ảnh trong nội dung
-        const processedContent = await processContentFiles(contentBlocks, req.files);
-        pageData.content = processedContent;
+        // Kiểm tra nếu là chuỗi JSON (từ Editor.js) thì parse, còn là HTML thì giữ nguyên
+        if (typeof contentData === 'string' && (contentData.trim().startsWith('[') || contentData.trim().startsWith('{'))) {
+            try {
+                contentData = JSON.parse(contentData);
+            } catch (e) {
+                // Nếu lỗi parse, giữ nguyên là string (HTML)
+            }
+        }
+        pageData.content = contentData;
 
         if (pageData.seo && typeof pageData.seo === 'string') {
             pageData.seo = JSON.parse(pageData.seo);

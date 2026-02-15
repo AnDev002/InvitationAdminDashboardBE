@@ -9,8 +9,8 @@ const contentBlockSchema = new mongoose.Schema({
         enum: ['text', 'image'],
     },
     content: { 
-        type: String,
-        required: true,
+        type: mongoose.Schema.Types.Mixed,
+        default: '' 
     },
     alt: {
         type: String
