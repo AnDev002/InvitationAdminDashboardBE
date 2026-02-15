@@ -1,53 +1,88 @@
 // AdminBE/services/page.service.js
+const Page = require('../models/page.model');
+const ApiFeatures = require('../utils/apiFeature'); // Nếu bạn có class này thì dùng, không thì dùng logic dưới đây
 
-const { Page } = require('../models/page.model');
-const PageCategory = require('../models/pageCategory.model');
-
-// --- Dịch vụ cho Page ---
-const getAllPages = (query = {}) => Page.find(query).populate('category').sort({ order: 1 }); // Sắp xếp theo order
-
-const getPageById = (id) => Page.findById(id).populate('category');
-const getPageBySlug = (slug) => Page.findOne({ slug, isPublished: true }).populate('category');
-
-const createPage = (pageData) => Page.create(pageData);
-const updatePage = (id, pageData) => Page.findByIdAndUpdate(id, pageData, { new: true, runValidators: true });
-const deletePage = (id) => Page.findByIdAndDelete(id);
-
-// === BẮT ĐẦU THÊM MỚI ===
-/**
- * Cập nhật thứ tự của nhiều trang.
- * @param {Array<{id: string}>} pages - Mảng các đối tượng chứa ID của trang.
- * @returns {Promise<any>}
- */
-const updatePageOrder = (pages) => {
-    const promises = pages.map((page, index) => {
-        return Page.findByIdAndUpdate(page.id, { order: index });
-    });
-    return Promise.all(promises);
+const createPage = async (pageBody, userId) => {
+  return Page.create({ ...pageBody, author: userId });
 };
-// === KẾT THÚC THÊM MỚI ===
 
-// --- Dịch vụ cho PageCategory ---
-const getAllPageCategories = () => PageCategory.find().sort({ name: 1 });
-const getPageCategoryById = (id) => PageCategory.findById(id);
-const createPageCategory = (categoryData) => PageCategory.create(categoryData);
-const updatePageCategory = (id, categoryData) => PageCategory.findByIdAndUpdate(id, categoryData, { new: true, runValidators: true });
-const deletePageCategory = async (id) => {
-    await Page.updateMany({ category: id }, { category: null });
-    return PageCategory.findByIdAndDelete(id);
+const queryPages = async (query) => {
+  const filter = {};
+
+  // 1. Filter theo search (Title hoặc Slug)
+  if (query.search) {
+      filter.$or = [
+          { title: { $regex: query.search, $options: 'i' } },
+          { slug: { $regex: query.search, $options: 'i' } }
+      ];
+  }
+
+  // 2. Filter theo trạng thái (Published/Draft)
+  if (query.status && query.status !== 'all') {
+      filter.isPublished = query.status === 'true';
+  }
+
+  // 3. Filter theo loại (Blog hay Page tĩnh)
+  if (query.type && query.type !== 'all') {
+      filter.isBlog = query.type === 'blog'; // type='blog' -> isBlog=true, type='page' -> isBlog=false
+  }
+
+  // 4. Filter theo danh mục
+  if (query.category && query.category !== 'all') {
+      filter.category = query.category;
+  }
+
+  // 5. Pagination & Sorting
+  const page = parseInt(query.page, 10) || 1;
+  const limit = parseInt(query.limit, 10) || 10;
+  const skip = (page - 1) * limit;
+  
+  const sortBy = query.sort ? query.sort : '-createdAt'; // Mặc định mới nhất trước
+
+  // Execute Query
+  const pages = await Page.find(filter)
+      .populate('author', 'name email') // Lấy tên author
+      .populate('category', 'name')     // Lấy tên category
+      .sort(sortBy)
+      .skip(skip)
+      .limit(limit);
+
+  // Count Total
+  const total = await Page.countDocuments(filter);
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+      data: pages,
+      page,
+      limit,
+      totalPages,
+      totalResults: total
+  };
+};
+
+const getPageById = async (id) => {
+  return Page.findById(id)
+    .populate('category')
+    .populate('topics');
+};
+
+const updatePage = async (id, updateBody) => {
+  const page = await Page.findByIdAndUpdate(id, updateBody, { new: true });
+  return page;
+};
+
+const deletePage = async (id) => {
+  const page = await Page.findByIdAndDelete(id); // Dùng findByIdAndDelete thay vì remove (deprecated)
+  if (!page) {
+      throw new Error('Page not found');
+  }
+  return page;
 };
 
 module.exports = {
-    getAllPages,
-    getPageById,
-    getPageBySlug,
-    createPage,
-    updatePage,
-    deletePage,
-    updatePageOrder, // Export hàm mới
-    getAllPageCategories,
-    getPageCategoryById,
-    createPageCategory,
-    updatePageCategory,
-    deletePageCategory
+  createPage,
+  queryPages,
+  getPageById,
+  updatePage,
+  deletePage,
 };
