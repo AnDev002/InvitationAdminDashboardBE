@@ -86,9 +86,8 @@ exports.getPages = async (req, res, next) => {
         if (req.query.isPublished) query.isPublished = req.query.isPublished === 'true';
         if (req.query.category) query.category = req.query.category;
         
-        const pages = await pageService.getAllPages(query); 
-        
-        res.status(200).json({ status: 'success', data: pages });
+        const result = await pageService.queryPages(req.query);
+        res.status(200).json({ status: 'success', ...result });
     } catch (error) { 
         next(error); 
     }

@@ -1,6 +1,8 @@
-// AdminBE/services/page.service.js
 const Page = require('../models/page.model');
-const ApiFeatures = require('../utils/apiFeature'); // Nếu bạn có class này thì dùng, không thì dùng logic dưới đây
+// QUAN TRỌNG: Phải require các model này để populate hoạt động
+require('../models/user.model');
+require('../models/pageCategory.model');
+require('../models/topic.model');
 
 const createPage = async (pageBody, userId) => {
   return Page.create({ ...pageBody, author: userId });
@@ -24,7 +26,9 @@ const queryPages = async (query) => {
 
   // 3. Filter theo loại (Blog hay Page tĩnh)
   if (query.type && query.type !== 'all') {
-      filter.isBlog = query.type === 'blog'; // type='blog' -> isBlog=true, type='page' -> isBlog=false
+      // type='blog' -> isBlog=true
+      // type='page' -> isBlog=false
+      filter.isBlog = query.type === 'blog'; 
   }
 
   // 4. Filter theo danh mục
@@ -41,8 +45,8 @@ const queryPages = async (query) => {
 
   // Execute Query
   const pages = await Page.find(filter)
-      .populate('author', 'name email') // Lấy tên author
-      .populate('category', 'name')     // Lấy tên category
+      .populate('author', 'name email') // Cần User model
+      .populate('category', 'name')     // Cần PageCategory model
       .sort(sortBy)
       .skip(skip)
       .limit(limit);
@@ -62,8 +66,8 @@ const queryPages = async (query) => {
 
 const getPageById = async (id) => {
   return Page.findById(id)
-    .populate('category')
-    .populate('topics');
+    .populate('category', 'name') // Populate tên category
+    .populate('topics', 'name');  // Populate tên topic
 };
 
 const updatePage = async (id, updateBody) => {
@@ -72,7 +76,7 @@ const updatePage = async (id, updateBody) => {
 };
 
 const deletePage = async (id) => {
-  const page = await Page.findByIdAndDelete(id); // Dùng findByIdAndDelete thay vì remove (deprecated)
+  const page = await Page.findByIdAndDelete(id);
   if (!page) {
       throw new Error('Page not found');
   }
