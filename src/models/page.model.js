@@ -8,7 +8,7 @@ const contentBlockSchema = new mongoose.Schema({
         required: true,
         enum: ['text', 'image'],
     },
-    content: { // Sẽ chứa text hoặc URL ảnh
+    content: { 
         type: String,
         required: true,
     },
@@ -16,7 +16,6 @@ const contentBlockSchema = new mongoose.Schema({
         type: String
     },
 }, { _id: true });
-
 
 const pageSchema = new mongoose.Schema({
     title: {
@@ -61,29 +60,26 @@ const pageSchema = new mongoose.Schema({
         type: mongoose.Schema.ObjectId,
         ref: 'User'
     },
-    // === BẮT ĐẦU THÊM MỚI ===
     order: {
         type: Number,
         default: 0
     },
     thumbnail: {
         type: String,
-        default: null // Lưu URL ảnh từ Cloudflare/S3
+        default: null 
     },
     summary: {
         type: String, 
         trim: true,
-        maxLength: 500 // Giới hạn độ dài cho đoạn mô tả ngắn
+        maxLength: 500 
     },
-    // === KẾT THÚC THÊM MỚI ===
 }, { timestamps: true });
 
-// Tự động tạo slug từ title nếu slug không được cung cấp
+// Pre-save hook
 pageSchema.pre('save', async function(next) {
     if (!this.slug) {
         this.slug = this.title.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
     }
-    // Tự động gán order cho trang mới tạo
     if (this.isNew) {
         const highestOrderPage = await this.constructor.findOne().sort('-order');
         this.order = (highestOrderPage && typeof highestOrderPage.order === 'number') ? highestOrderPage.order + 1 : 1;
@@ -91,7 +87,7 @@ pageSchema.pre('save', async function(next) {
     next();
 });
 
-// Middleware để tự động populate author và category khi query
+// Populate hook
 pageSchema.pre(/^find/, function(next) {
     this.populate('author', 'name')
         .populate('category', 'name slug')
@@ -99,8 +95,7 @@ pageSchema.pre(/^find/, function(next) {
     next();
 });
 
-
 const Page = mongoose.model('Page', pageSchema);
 
-// Xuất cả hai model
-module.exports = { Page };
+// === SỬA TẠI ĐÂY: Export trực tiếp Model thay vì object ===
+module.exports = Page;
