@@ -24,7 +24,8 @@ router.put('/update-order', pageController.updatePageOrder);
 
 router.route('/:id')
     .get(pageController.getPage)
-    .put(upload.any(), pageController.updatePage)
+    .put(upload.any(), pageController.updatePage)    
+    .patch(upload.any(), pageController.updatePage)  
     .delete(pageController.deletePage);
 
 router.post(
