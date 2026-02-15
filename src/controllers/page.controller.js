@@ -2,6 +2,7 @@
 const pageService = require('../services/page.service');
 const { uploadFileToCloudflare } = require('../services/cloudflare.service');
 const sharp = require('sharp');
+const Page = require('../models/page.model');
 
 // --- Helper: Xử lý Thumbnail riêng biệt ---
 const processThumbnail = async (files) => {
