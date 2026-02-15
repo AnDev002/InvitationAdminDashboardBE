@@ -183,11 +183,18 @@ exports.updatePage = async (req, res, next) => {
         // 3. Parse và xử lý nội dung (FIX LỖI TẠI ĐÂY)
         pageData.topics = safeJsonParse(pageData.topics, []);
         
-        // Kiểm tra xem content đã là object chưa trước khi parse
-        const contentBlocks = safeJsonParse(pageData.content, []);
-
-        const processedContent = await processContentFiles(contentBlocks, req.files);
-        pageData.content = processedContent;
+        let contentRaw = pageData.content;
+        
+        // Chỉ parse nếu nó thực sự là chuỗi JSON (bắt đầu bằng { hoặc [)
+        if (typeof contentRaw === 'string' && (contentRaw.trim().startsWith('{') || contentRaw.trim().startsWith('['))) {
+             // Dùng hàm safeJsonParse hiện tại nhưng cẩn thận với fallback
+             const parsed = safeJsonParse(contentRaw, null); // Fallback là null để check
+             if (parsed) {
+                 contentRaw = parsed;
+             }
+        }
+        
+        pageData.content = contentRaw;
 
         pageData.seo = safeJsonParse(pageData.seo, {});
 
