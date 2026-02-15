@@ -122,6 +122,17 @@ exports.createPage = async (req, res, next) => {
             pageData.relatedTemplate = null;
         }
 
+        // --- FIX: Parse relatedProducts từ JSON string sang Array ---
+        // Frontend gửi mảng ID dưới dạng chuỗi JSON, cần parse ra trước khi lưu
+        if (pageData.relatedProducts && typeof pageData.relatedProducts === 'string') {
+            try {
+                pageData.relatedProducts = JSON.parse(pageData.relatedProducts);
+            } catch (e) {
+                pageData.relatedProducts = []; // Nếu lỗi thì gán mảng rỗng để tránh crash
+            }
+        }
+        // -------------------------------------------------------------
+
         // 2. Parse dữ liệu JSON
         if (pageData.topics && typeof pageData.topics === 'string') {
             pageData.topics = JSON.parse(pageData.topics);
@@ -172,6 +183,16 @@ exports.updatePage = async (req, res, next) => {
             pageData.relatedTemplate = null;
         }
 
+        // --- FIX: Parse relatedProducts tương tự createPage ---
+        if (pageData.relatedProducts && typeof pageData.relatedProducts === 'string') {
+            try {
+                pageData.relatedProducts = JSON.parse(pageData.relatedProducts);
+            } catch (e) {
+                pageData.relatedProducts = [];
+            }
+        }
+        // -----------------------------------------------------
+
         // 2. Logic dọn dẹp Category
         pageData.isBlog = pageData.isBlog === 'true' || pageData.isBlog === true;
         if (!pageData.isBlog) {
@@ -180,23 +201,34 @@ exports.updatePage = async (req, res, next) => {
             pageData.category = null;
         }
 
-        // 3. Parse và xử lý nội dung (FIX LỖI TẠI ĐÂY)
-        pageData.topics = safeJsonParse(pageData.topics, []);
+        // 3. Parse và xử lý nội dung
+        // Nếu file này đã có hàm safeJsonParse thì dùng, nếu không thì dùng JSON.parse như trên
+        if (typeof safeJsonParse === 'function') {
+             pageData.topics = safeJsonParse(pageData.topics, []);
+             pageData.seo = safeJsonParse(pageData.seo, {});
+        } else {
+             // Fallback phòng khi hàm safeJsonParse chưa được import/định nghĩa
+             if (typeof pageData.topics === 'string') try { pageData.topics = JSON.parse(pageData.topics) } catch(e) { pageData.topics = [] }
+             if (typeof pageData.seo === 'string') try { pageData.seo = JSON.parse(pageData.seo) } catch(e) { pageData.seo = {} }
+        }
         
         let contentRaw = pageData.content;
         
         // Chỉ parse nếu nó thực sự là chuỗi JSON (bắt đầu bằng { hoặc [)
         if (typeof contentRaw === 'string' && (contentRaw.trim().startsWith('{') || contentRaw.trim().startsWith('['))) {
-             // Dùng hàm safeJsonParse hiện tại nhưng cẩn thận với fallback
-             const parsed = safeJsonParse(contentRaw, null); // Fallback là null để check
+             let parsed = null;
+             if (typeof safeJsonParse === 'function') {
+                parsed = safeJsonParse(contentRaw, null);
+             } else {
+                try { parsed = JSON.parse(contentRaw); } catch(e) {}
+             }
+             
              if (parsed) {
                  contentRaw = parsed;
              }
         }
         
         pageData.content = contentRaw;
-
-        pageData.seo = safeJsonParse(pageData.seo, {});
 
         const updatedPage = await pageService.updatePage(req.params.id, pageData);
         if (!updatedPage) return res.status(404).json({ message: 'Không tìm thấy trang' });
