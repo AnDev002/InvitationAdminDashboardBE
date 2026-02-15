@@ -47,6 +47,10 @@ const pageSchema = new mongoose.Schema({
         type: mongoose.Schema.ObjectId,
         ref: 'Topic'
     }],
+    relatedProducts: [{
+        type: mongoose.Schema.ObjectId,
+        ref: 'Product' 
+    }],
     seo: {
         metaTitle: { type: String, trim: true },
         metaDescription: { type: String, trim: true },

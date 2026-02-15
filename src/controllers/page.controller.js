@@ -219,10 +219,45 @@ exports.deletePage = async (req, res, next) => {
 
 exports.getPublicPageBySlug = async (req, res, next) => {
     try {
-        const page = await pageService.getPageBySlug(req.params.slug);
-        if (!page) return res.status(404).json({ message: 'Trang không tồn tại hoặc chưa được xuất bản.' });
-        res.status(200).json({ status: 'success', data: page });
-    } catch (error) { next(error); }
+        // 1. Lấy thông tin bài viết (Populate relatedProducts)
+        // Nếu pageService.getPageBySlug chưa populate, ta dùng mongoose query trực tiếp ở đây hoặc sửa Service.
+        // Ở đây mình viết đè query để đảm bảo có relatedProducts
+        const page = await Page.findOne({ slug: req.params.slug, isPublished: true })
+            .populate('category', 'name slug')
+            .populate('author', 'name avatar')
+            .populate({
+                path: 'relatedProducts',
+                select: 'name price images slug' // Chỉ lấy trường cần thiết
+            })
+            .lean();
+
+        if (!page) {
+            return res.status(404).json({ message: 'Trang không tồn tại hoặc chưa được xuất bản.' });
+        }
+
+        // 2. Lấy 5 bài viết mới nhất (trừ bài hiện tại)
+        const latestPosts = await Page.find({
+            isBlog: true,
+            isPublished: true,
+            _id: { $ne: page._id } // Loại trừ bài đang xem
+        })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .select('title slug createdAt thumbnail category') // Chỉ lấy field cần thiết
+        .populate('category', 'name')
+        .lean();
+
+        // 3. Trả về response gộp
+        res.status(200).json({ 
+            status: 'success', 
+            data: page,
+            related: {
+                latestPosts: latestPosts
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
 };
 
 exports.getAllPageCategories = async (req, res, next) => {
