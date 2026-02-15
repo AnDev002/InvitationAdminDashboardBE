@@ -2,20 +2,20 @@
 const mongoose = require('mongoose');
 
 // Schema cho các khối nội dung
-const contentBlockSchema = new mongoose.Schema({
-    type: {
-        type: String,
-        required: true,
-        enum: ['text', 'image'],
-    },
-    content: { 
-        type: mongoose.Schema.Types.Mixed,
-        default: '' 
-    },
-    alt: {
-        type: String
-    },
-}, { _id: true });
+// const contentBlockSchema = new mongoose.Schema({
+//     type: {
+//         type: String,
+//         required: true,
+//         enum: ['text', 'image'],
+//     },
+//     content: { 
+//         type: mongoose.Schema.Types.Mixed,
+//         default: '' 
+//     },
+//     alt: {
+//         type: String
+//     },
+// }, { _id: true });
 
 const pageSchema = new mongoose.Schema({
     title: {
@@ -31,8 +31,8 @@ const pageSchema = new mongoose.Schema({
         lowercase: true,
     },
     content: {
-        type: [contentBlockSchema],
-        default: [],
+        type: mongoose.Schema.Types.Mixed,
+        default: '',
     },
     isBlog: {
         type: Boolean,
