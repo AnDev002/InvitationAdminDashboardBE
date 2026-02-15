@@ -3,8 +3,9 @@ const Page = require('../models/page.model'); // Import trực tiếp, KHÔNG d�
 const PageCategory = require('../models/pageCategory.model');
 
 // QUAN TRỌNG: Load các model phụ để tránh lỗi khi populate
-require('../models/user.model');
 require('../models/topic.model');
+require('../models/pageCategory.model');
+require('../models/user.model');
 
 // 1. Hàm Query nâng cao (Filter, Search, Pagination) - Thay thế cho getAllPages cũ
 const queryPages = async (query) => {
@@ -60,7 +61,14 @@ const queryPages = async (query) => {
 };
 
 const getPageById = (id) => Page.findById(id).populate('category').populate('topics');
-const getPageBySlug = (slug) => Page.findOne({ slug, isPublished: true }).populate('category').populate('topics');
+const getPageBySlug = (slug) => {
+    return Page.findOne({ slug, isPublished: true })
+        .populate('author', 'name')
+        .populate('category', 'name slug')
+        .populate('topics', 'name slug')
+        .populate('relatedTemplate', 'name thumbnail slug code price'); 
+};
+
 
 const createPage = (pageData) => Page.create(pageData);
 

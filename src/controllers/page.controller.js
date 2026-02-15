@@ -107,6 +107,10 @@ exports.createPage = async (req, res, next) => {
             pageData.thumbnail = thumbnailUrl;
         }
 
+        if (pageData.relatedTemplate === '' || pageData.relatedTemplate === 'null') {
+            pageData.relatedTemplate = null;
+        }
+
         // 2. Parse dữ liệu JSON
         if (pageData.topics && typeof pageData.topics === 'string') {
             pageData.topics = JSON.parse(pageData.topics);
@@ -149,6 +153,10 @@ exports.updatePage = async (req, res, next) => {
         }
         // Xóa trường thừa để tránh lỗi schema nếu có
         delete pageData.thumbnailUrl;
+
+        if (pageData.relatedTemplate === '' || pageData.relatedTemplate === 'null') {
+            pageData.relatedTemplate = null;
+        }
 
         // 2. Logic dọn dẹp Category
         pageData.isBlog = pageData.isBlog === 'true';
