@@ -34,7 +34,7 @@ const processContentFiles = async (contentBlocks, files) => {
     const fileMap = new Map(files.map(f => [f.originalname, f]));
 
     const processedBlocks = await Promise.all(contentBlocks.map(async (block) => {
-        if (block.type === 'image' && block.content && block.content.startsWith('[[file:')) {
+        if (block.type === 'image' && block.content && typeof block.content === 'string' && block.content.startsWith('[[file:')) {
             try {
                 const match = block.content.match(/\[\[file:(.*?)\]\]/);
                 if (!match) return block;
@@ -60,6 +60,17 @@ const processContentFiles = async (contentBlocks, files) => {
     }));
 
     return processedBlocks;
+};
+
+const safeJsonParse = (data, fallback = []) => {
+    if (!data) return fallback;
+    if (typeof data === 'object') return data; // Nếu đã là object/array thì trả về luôn
+    try {
+        return JSON.parse(data);
+    } catch (e) {
+        console.error("JSON Parse Error:", e.message);
+        return fallback;
+    }
 };
 
 // --- Controllers ---
@@ -142,16 +153,13 @@ exports.updatePage = async (req, res, next) => {
     try {
         const pageData = { ...req.body };
 
-        // 1. Xử lý Thumbnail khi update (New Logic)
-        // Nếu có file mới upload -> process và lấy URL mới
+        // 1. Xử lý Thumbnail
         const newThumbnailUrl = await processThumbnail(req.files);
         if (newThumbnailUrl) {
             pageData.thumbnail = newThumbnailUrl;
         } else if (pageData.thumbnailUrl) {
-            // Nếu không có file mới, nhưng Frontend gửi 'thumbnailUrl' cũ -> giữ nguyên
             pageData.thumbnail = pageData.thumbnailUrl;
         }
-        // Xóa trường thừa để tránh lỗi schema nếu có
         delete pageData.thumbnailUrl;
 
         if (pageData.relatedTemplate === '' || pageData.relatedTemplate === 'null') {
@@ -159,25 +167,23 @@ exports.updatePage = async (req, res, next) => {
         }
 
         // 2. Logic dọn dẹp Category
-        pageData.isBlog = pageData.isBlog === 'true';
+        pageData.isBlog = pageData.isBlog === 'true' || pageData.isBlog === true;
         if (!pageData.isBlog) {
             pageData.category = null;
         } else if (pageData.category === '' || pageData.category === 'null') {
             pageData.category = null;
         }
 
-        // 3. Parse và xử lý nội dung
-        if (pageData.topics && typeof pageData.topics === 'string') {
-            pageData.topics = JSON.parse(pageData.topics);
-        }
+        // 3. Parse và xử lý nội dung (FIX LỖI TẠI ĐÂY)
+        pageData.topics = safeJsonParse(pageData.topics, []);
         
-        const contentBlocks = JSON.parse(pageData.content || '[]');
+        // Kiểm tra xem content đã là object chưa trước khi parse
+        const contentBlocks = safeJsonParse(pageData.content, []);
+
         const processedContent = await processContentFiles(contentBlocks, req.files);
         pageData.content = processedContent;
 
-        if (pageData.seo && typeof pageData.seo === 'string') {
-            pageData.seo = JSON.parse(pageData.seo);
-        }
+        pageData.seo = safeJsonParse(pageData.seo, {});
 
         const updatedPage = await pageService.updatePage(req.params.id, pageData);
         if (!updatedPage) return res.status(404).json({ message: 'Không tìm thấy trang' });
