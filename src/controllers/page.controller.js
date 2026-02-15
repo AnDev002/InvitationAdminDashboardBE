@@ -81,15 +81,11 @@ exports.getPublicPages = async (req, res, next) => {
 
 exports.getPages = async (req, res, next) => {
     try {
-        const query = {};
-        if (req.query.isBlog) query.isBlog = req.query.isBlog === 'true';
-        if (req.query.isPublished) query.isPublished = req.query.isPublished === 'true';
-        if (req.query.category) query.category = req.query.category;
-        
-        const result = await pageService.queryPages(req.query);
+        // Đã khớp với tên hàm trong Service mới
+        const result = await pageService.queryPages(req.query); 
         res.status(200).json({ status: 'success', ...result });
-    } catch (error) { 
-        next(error); 
+    } catch (error) {
+        next(error);
     }
 };
 
