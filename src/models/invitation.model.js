@@ -63,6 +63,12 @@ const guestGroupSchema = new mongoose.Schema({
     salutation: { type: String, required: true, default: 'Thân gửi' }
 }, { _id: true }); // Mongoose sẽ tự động thêm _id cho subdocument
 
+const imagePositionSchema = new mongoose.Schema({
+    x: { type: Number, default: 0 },
+    y: { type: Number, default: 0 },
+    scale: { type: Number, default: 1 }
+}, { _id: false });
+
 const invitationSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.ObjectId, ref: 'User', required: true },
     template: { type: mongoose.Schema.ObjectId, ref: 'InvitationTemplate', required: true },
@@ -97,7 +103,9 @@ const invitationSchema = new mongoose.Schema({
         groomInfo: { type: String, default: 'Thông tin về chú rể...' },
         brideInfo: { type: String, default: 'Thông tin về cô dâu...' },
         groomImageUrl: { type: String, default: 'https://placehold.co/400x400/E9ECEF/333?text=Chú+Rể' },
+        groomImagePosition: { type: imagePositionSchema, default: () => ({ x: 0, y: 0, scale: 1 }) },
         brideImageUrl: { type: String, default: 'https://placehold.co/400x400/F8F9FA/333?text=Cô+Dâu' },
+        brideImagePosition: { type: imagePositionSchema, default: () => ({ x: 0, y: 0, scale: 1 }) },
         heroImages: {
             main: { type: String, default: 'https://placehold.co/800x1200/cccccc/ffffff?text=Ảnh+cưới+1' },
             sub1: { type: String, default: 'https://placehold.co/800x590/cccccc/ffffff?text=Ảnh+cưới+2' },
