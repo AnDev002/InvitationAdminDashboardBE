@@ -177,3 +177,29 @@ exports.bulkDeleteFonts = async (req, res, next) => {
     }
 };
 // === KẾT THÚC THÊM MỚI ===
+
+exports.bulkUpdateCategory = async (req, res, next) => {
+    try {
+        const { ids, newCategory } = req.body;
+
+        // Validate dữ liệu đầu vào
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ message: 'Vui lòng cung cấp danh sách ID của font cần cập nhật.' });
+        }
+        
+        // Kiểm tra xem category có hợp lệ không (dựa trên Enum bạn đã định nghĩa ở Model)
+        const validCategories = ['Wedding', 'Uppercase', 'Vietnamese', 'General'];
+        if (!newCategory || !validCategories.includes(newCategory)) {
+            return res.status(400).json({ message: 'Phân loại không hợp lệ.' });
+        }
+
+        const result = await fontService.bulkUpdateCategory(ids, newCategory);
+
+        res.status(200).json({
+            status: 'success',
+            message: `Đã cập nhật phân loại thành công cho ${result.modifiedCount} font.`,
+        });
+    } catch (error) {
+        next(error);
+    }
+};

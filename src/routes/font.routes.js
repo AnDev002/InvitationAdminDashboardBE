@@ -10,7 +10,7 @@ router.route('/')
 
 router.post('/bulk-upload', upload.array('fonts', 350), fontController.bulkCreateFonts);
 router.delete('/bulk-delete', fontController.bulkDeleteFonts);
-
+router.put('/bulk-category', fontController.bulkUpdateCategory);
 router.route('/:id')
     .put(fontController.updateFont)    
     .delete(fontController.deleteFont);

@@ -62,6 +62,13 @@ const bulkUpsertFonts = async (fontsData) => {
     return [];
 };
 
+const bulkUpdateCategory = async (ids, newCategory) => {
+    return Font.updateMany(
+        { _id: { $in: ids } },
+        { $set: { category: newCategory } }
+    );
+};
+
 module.exports = {
     getAllFonts,
     createFont,
@@ -70,4 +77,5 @@ module.exports = {
     updateFontById,       // Export hàm mới
     bulkDeleteFontsByIds, // Export hàm mới
     bulkUpsertFonts,
+    bulkUpdateCategory
 };
