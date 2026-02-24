@@ -133,29 +133,33 @@ exports.bulkCreateFonts = async (req, res, next) => {
 };
 
 // === BẮT ĐẦU THÊM MỚI ===
-exports.updateFont = async (req, res, next) => {
+exports.updateFont = async (req, res) => {
     try {
-        const { name, category } = req.body; // Nhận thêm category từ request
-        const updateData = {};
-        if (name) updateData.name = name;
-        if (category) updateData.category = category;
-        if (!name) {
-            return res.status(400).json({ message: 'Tên font là bắt buộc.' });
+        const { id } = req.params;
+        const { name, category } = req.body;
+
+        // Kiểm tra xem tên có bị trùng với font khác không (nếu đổi tên)
+        if (name) {
+            const existingFont = await Font.findOne({ name, _id: { $ne: id } });
+            if (existingFont) {
+                return res.status(409).json({ message: "Tên font đã tồn tại trong hệ thống." });
+            }
         }
 
-        const updatedFont = await fontService.updateFontById(req.params.id, updateData);
+        const updatedFont = await Font.findByIdAndUpdate(
+            id,
+            { name, category }, // Cập nhật cả name và category
+            { new: true, runValidators: true }
+        );
 
         if (!updatedFont) {
-            return res.status(404).json({ message: 'Không tìm thấy font.' });
+            return res.status(404).json({ message: "Không tìm thấy font." });
         }
 
-        res.status(200).json({ status: 'success', data: updatedFont });
+        res.status(200).json({ message: "Cập nhật thành công", font: updatedFont });
     } catch (error) {
-        // Xử lý lỗi trùng tên khi cập nhật
-        if (error.code === 11000) {
-            return res.status(409).json({ message: 'Tên font này đã tồn tại.' });
-        }
-        next(error);
+        console.error("Update Font Error:", error);
+        res.status(500).json({ message: "Lỗi server khi cập nhật font." });
     }
 };
 
@@ -178,28 +182,30 @@ exports.bulkDeleteFonts = async (req, res, next) => {
 };
 // === KẾT THÚC THÊM MỚI ===
 
-exports.bulkUpdateCategory = async (req, res, next) => {
+exports.bulkUpdateCategory = async (req, res) => {
     try {
-        const { ids, newCategory } = req.body;
+        const { ids, category } = req.body;
 
-        // Validate dữ liệu đầu vào
         if (!ids || !Array.isArray(ids) || ids.length === 0) {
-            return res.status(400).json({ message: 'Vui lòng cung cấp danh sách ID của font cần cập nhật.' });
-        }
-        
-        // Kiểm tra xem category có hợp lệ không (dựa trên Enum bạn đã định nghĩa ở Model)
-        const validCategories = ['Wedding', 'Uppercase', 'Vietnamese', 'General'];
-        if (!newCategory || !validCategories.includes(newCategory)) {
-            return res.status(400).json({ message: 'Phân loại không hợp lệ.' });
+            return res.status(400).json({ message: "Danh sách ID không hợp lệ." });
         }
 
-        const result = await fontService.bulkUpdateCategory(ids, newCategory);
+        if (!category) {
+            return res.status(400).json({ message: "Vui lòng cung cấp loại font (category)." });
+        }
 
-        res.status(200).json({
-            status: 'success',
-            message: `Đã cập nhật phân loại thành công cho ${result.modifiedCount} font.`,
+        // Cập nhật tất cả các font có _id nằm trong mảng ids
+        const result = await Font.updateMany(
+            { _id: { $in: ids } }, // Điều kiện tìm kiếm
+            { $set: { category: category } } // Dữ liệu cập nhật
+        );
+
+        res.status(200).json({ 
+            message: `Đã cập nhật thành công ${result.modifiedCount} font.`,
+            updatedCount: result.modifiedCount
         });
     } catch (error) {
-        next(error);
+        console.error("Bulk Update Category Error:", error);
+        res.status(500).json({ message: "Lỗi server khi cập nhật hàng loạt." });
     }
 };
