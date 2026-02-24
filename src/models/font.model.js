@@ -17,6 +17,7 @@ const fontSchema = new mongoose.Schema({
     category: {
         type: String,
         trim: true,
+        enum: ['Wedding', 'Uppercase', 'Vietnamese', 'General'],
         default: 'General'
     },
     // (Tùy chọn) Chỉ định font này có sẵn cho người dùng không
