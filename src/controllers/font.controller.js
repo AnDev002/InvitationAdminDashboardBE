@@ -110,7 +110,7 @@ exports.bulkCreateFonts = async (req, res, next) => {
 
             return {
                 name: meta.name,
-                category: meta.category || 'Custom',
+                category: meta.category || 'General',
                 url: url
             };
         });
@@ -138,7 +138,12 @@ exports.updateFont = async (req, res) => {
         const { id } = req.params;
         const { name, category } = req.body;
 
-        // Kiểm tra xem tên có bị trùng với font khác không (nếu đổi tên)
+        // Tự động tạo object update chỉ chứa các trường có giá trị truyền lên
+        const updateData = {};
+        if (name !== undefined) updateData.name = name;
+        if (category !== undefined) updateData.category = category;
+
+        // Kiểm tra xem tên có bị trùng với font khác không (nếu thao tác đổi tên)
         if (name) {
             const existingFont = await Font.findOne({ name, _id: { $ne: id } });
             if (existingFont) {
@@ -146,9 +151,10 @@ exports.updateFont = async (req, res) => {
             }
         }
 
+        // Cập nhật với dữ liệu đã lọc, ngăn Mongoose tự chèn undefined
         const updatedFont = await Font.findByIdAndUpdate(
             id,
-            { name, category }, // Cập nhật cả name và category
+            { $set: updateData }, 
             { new: true, runValidators: true }
         );
 
@@ -159,6 +165,13 @@ exports.updateFont = async (req, res) => {
         res.status(200).json({ message: "Cập nhật thành công", font: updatedFont });
     } catch (error) {
         console.error("Update Font Error:", error);
+        
+        // Bắt và hiển thị lỗi validation cụ thể từ Mongoose
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(val => val.message);
+            return res.status(400).json({ message: messages.join(', ') });
+        }
+        
         res.status(500).json({ message: "Lỗi server khi cập nhật font." });
     }
 };
