@@ -135,13 +135,15 @@ exports.bulkCreateFonts = async (req, res, next) => {
 // === BẮT ĐẦU THÊM MỚI ===
 exports.updateFont = async (req, res, next) => {
     try {
-        // Chỉ cho phép cập nhật tên
-        const { name } = req.body;
+        const { name, category } = req.body; // Nhận thêm category từ request
+        const updateData = {};
+        if (name) updateData.name = name;
+        if (category) updateData.category = category;
         if (!name) {
             return res.status(400).json({ message: 'Tên font là bắt buộc.' });
         }
 
-        const updatedFont = await fontService.updateFontById(req.params.id, { name });
+        const updatedFont = await fontService.updateFontById(req.params.id, updateData);
 
         if (!updatedFont) {
             return res.status(404).json({ message: 'Không tìm thấy font.' });
