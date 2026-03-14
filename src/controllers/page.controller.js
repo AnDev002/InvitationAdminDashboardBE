@@ -112,7 +112,7 @@ exports.createPage = async (req, res, next) => {
     try {
         const pageData = { ...req.body };
         
-        // 1. Xử lý Thumbnail (New Logic)
+        // 1. Xử lý Thumbnail
         const thumbnailUrl = await processThumbnail(req.files);
         if (thumbnailUrl) {
             pageData.thumbnail = thumbnailUrl;
@@ -122,47 +122,53 @@ exports.createPage = async (req, res, next) => {
             pageData.relatedTemplate = null;
         }
 
-        // ==========================================
-        // THÊM ĐOẠN NÀY ĐỂ FIX LỖI CAST TO OBJECTID
-        // ==========================================
-        if (pageData.category === '' || pageData.category === 'null' || !pageData.category) {
+        // --- CHUẨN HOÁ CATEGORY & ISBLOG (Giống updatePage) ---
+        pageData.isBlog = pageData.isBlog === 'true' || pageData.isBlog === true;
+        if (!pageData.isBlog) {
+            pageData.category = null;
+        } else if (pageData.category === '' || pageData.category === 'null' || !pageData.category) {
             pageData.category = null;
         }
 
-        // --- FIX: Parse relatedProducts từ JSON string sang Array ---
-        // Frontend gửi mảng ID dưới dạng chuỗi JSON, cần parse ra trước khi lưu
+        // --- PARSE RELATED PRODUCTS ---
         if (pageData.relatedProducts && typeof pageData.relatedProducts === 'string') {
             try {
                 pageData.relatedProducts = JSON.parse(pageData.relatedProducts);
             } catch (e) {
-                pageData.relatedProducts = []; // Nếu lỗi thì gán mảng rỗng để tránh crash
+                pageData.relatedProducts = []; 
             }
         }
-        // -------------------------------------------------------------
 
-        // 2. Parse dữ liệu JSON
-        if (pageData.topics && typeof pageData.topics === 'string') {
-            pageData.topics = JSON.parse(pageData.topics);
+        // --- PARSE DỮ LIỆU JSON AN TOÀN (topics, seo) ---
+        if (typeof safeJsonParse === 'function') {
+             pageData.topics = safeJsonParse(pageData.topics, []);
+             pageData.seo = safeJsonParse(pageData.seo, {});
+        } else {
+             if (typeof pageData.topics === 'string') try { pageData.topics = JSON.parse(pageData.topics) } catch(e) { pageData.topics = [] }
+             if (typeof pageData.seo === 'string') try { pageData.seo = JSON.parse(pageData.seo) } catch(e) { pageData.seo = {} }
         }
-        let contentData = pageData.content;
+        
+        // --- XỬ LÝ NỘI DUNG CONTENT (Tránh lỗi vỡ mảng ký tự) ---
+        let contentRaw = pageData.content;
+        
+        // Chỉ parse nếu nó thực sự là chuỗi JSON (bắt đầu bằng { hoặc [)
+        if (typeof contentRaw === 'string' && (contentRaw.trim().startsWith('{') || contentRaw.trim().startsWith('['))) {
+             let parsed = null;
+             if (typeof safeJsonParse === 'function') {
+                parsed = safeJsonParse(contentRaw, null);
+             } else {
+                try { parsed = JSON.parse(contentRaw); } catch(e) {}
+             }
+             
+             // Chỉ lấy content parse được nếu hợp lệ
+             if (parsed) {
+                 contentRaw = parsed;
+             }
+        }
+        
+        pageData.content = contentRaw;
 
-        // Kiểm tra nếu là chuỗi JSON (từ Editor.js) thì parse, còn là HTML thì giữ nguyên
-        if (typeof contentData === 'string' && (contentData.trim().startsWith('[') || contentData.trim().startsWith('{'))) {
-            try {
-                contentData = JSON.parse(contentData);
-            } catch (e) {
-                // Nếu lỗi parse, giữ nguyên là string (HTML)
-            }
-        }
-        pageData.content = contentData;
-
-        if (pageData.seo && typeof pageData.seo === 'string') {
-            pageData.seo = JSON.parse(pageData.seo);
-        }
-        if (pageData.isBlog) {
-            pageData.isBlog = pageData.isBlog === 'true';
-        }
-
+        // Lưu vào DB
         const newPage = await pageService.createPage({ ...pageData, author: req.user.id });
         res.status(201).json({ status: 'success', data: newPage });
     } catch (error) {
