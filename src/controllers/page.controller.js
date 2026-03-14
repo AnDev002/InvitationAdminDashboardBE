@@ -122,6 +122,13 @@ exports.createPage = async (req, res, next) => {
             pageData.relatedTemplate = null;
         }
 
+        // ==========================================
+        // THÊM ĐOẠN NÀY ĐỂ FIX LỖI CAST TO OBJECTID
+        // ==========================================
+        if (pageData.category === '' || pageData.category === 'null' || !pageData.category) {
+            pageData.category = null;
+        }
+
         // --- FIX: Parse relatedProducts từ JSON string sang Array ---
         // Frontend gửi mảng ID dưới dạng chuỗi JSON, cần parse ra trước khi lưu
         if (pageData.relatedProducts && typeof pageData.relatedProducts === 'string') {

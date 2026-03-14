@@ -35,7 +35,6 @@ router.delete(
 );
 
 router.delete('/:id', protect, authorize('admin'), deleteDesignAsset);
-
 router.post('/seed', seedInitialAssets);
 
 module.exports = router;
