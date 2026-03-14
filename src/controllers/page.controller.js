@@ -110,6 +110,12 @@ exports.getPage = async (req, res, next) => {
 
 exports.createPage = async (req, res, next) => {
     try {
+        console.log("\n========== DEBUG: CREATE PAGE START ==========");
+        console.log("1. Dữ liệu gốc từ Frontend (req.body.content):");
+        console.log(req.body.content);
+        console.log("-> Kiểu dữ liệu gốc:", typeof req.body.content);
+        console.log("-> Có phải là mảng không?", Array.isArray(req.body.content));
+
         const pageData = { ...req.body };
         
         // 1. Xử lý Thumbnail
@@ -122,7 +128,7 @@ exports.createPage = async (req, res, next) => {
             pageData.relatedTemplate = null;
         }
 
-        // --- CHUẨN HOÁ CATEGORY & ISBLOG (Giống updatePage) ---
+        // --- CHUẨN HOÁ CATEGORY & ISBLOG ---
         pageData.isBlog = pageData.isBlog === 'true' || pageData.isBlog === true;
         if (!pageData.isBlog) {
             pageData.category = null;
@@ -139,7 +145,7 @@ exports.createPage = async (req, res, next) => {
             }
         }
 
-        // --- PARSE DỮ LIỆU JSON AN TOÀN (topics, seo) ---
+        // --- PARSE DỮ LIỆU JSON AN TOÀN ---
         if (typeof safeJsonParse === 'function') {
              pageData.topics = safeJsonParse(pageData.topics, []);
              pageData.seo = safeJsonParse(pageData.seo, {});
@@ -148,30 +154,48 @@ exports.createPage = async (req, res, next) => {
              if (typeof pageData.seo === 'string') try { pageData.seo = JSON.parse(pageData.seo) } catch(e) { pageData.seo = {} }
         }
         
-        // --- XỬ LÝ NỘI DUNG CONTENT (Tránh lỗi vỡ mảng ký tự) ---
+        // --- XỬ LÝ NỘI DUNG CONTENT ---
         let contentRaw = pageData.content;
         
-        // Chỉ parse nếu nó thực sự là chuỗi JSON (bắt đầu bằng { hoặc [)
+        console.log("\n2. Bắt đầu xử lý parse contentRaw...");
         if (typeof contentRaw === 'string' && (contentRaw.trim().startsWith('{') || contentRaw.trim().startsWith('['))) {
              let parsed = null;
              if (typeof safeJsonParse === 'function') {
                 parsed = safeJsonParse(contentRaw, null);
              } else {
-                try { parsed = JSON.parse(contentRaw); } catch(e) {}
+                try { parsed = JSON.parse(contentRaw); } catch(e) {
+                    console.log("-> Lỗi parse JSON content:", e.message);
+                }
              }
              
-             // Chỉ lấy content parse được nếu hợp lệ
              if (parsed) {
                  contentRaw = parsed;
+                 console.log("-> Đã parse content thành object/array thành công.");
              }
+        } else {
+             console.log("-> ContentRaw không có dấu hiệu là JSON, giữ nguyên dạng String.");
         }
         
         pageData.content = contentRaw;
+        console.log("\n3. Dữ liệu chuẩn bị gửi cho Mongoose lưu (pageData.content):");
+        console.log(pageData.content);
+        console.log("-> Kiểu dữ liệu trước khi lưu:", typeof pageData.content);
+        console.log("-> Có phải là mảng không?", Array.isArray(pageData.content));
 
         // Lưu vào DB
         const newPage = await pageService.createPage({ ...pageData, author: req.user.id });
+        
+        console.log("\n4. Dữ liệu sau khi Mongoose trả về (newPage.content):");
+        console.log("-> Kiểu dữ liệu sau khi lưu:", typeof newPage.content);
+        console.log("-> Có phải là mảng không?", Array.isArray(newPage.content));
+        if (Array.isArray(newPage.content)) {
+            console.log("-> 5 phần tử đầu tiên bị vỡ:", newPage.content.slice(0, 5));
+        }
+        console.log("========== DEBUG: CREATE PAGE END ==========\n");
+
         res.status(201).json({ status: 'success', data: newPage });
     } catch (error) {
+        console.error("LỖI KHI CREATE PAGE:", error);
         if (error.code === 11000) {
             return res.status(409).json({ message: 'Lỗi: Đường dẫn (slug) này đã tồn tại.' });
         }
