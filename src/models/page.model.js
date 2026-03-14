@@ -100,6 +100,6 @@ pageSchema.pre(/^find/, function(next) {
 });
 
 const Page = mongoose.model('Page', pageSchema);
-
+console.log("====== ĐÃ NHẬN SCHEMA MIXED MỚI NHẤT ======");
 // === SỬA TẠI ĐÂY: Export trực tiếp Model thay vì object ===
 module.exports = Page;
